@@ -117,7 +117,7 @@ export default function InvoicesListPage() {
               <div class="logo-area">
                 <div class="logo-box">LOGO</div>
                 <div class="company-info">
-                  <h2>DIVCODEX REALTY</h2>
+                  <h2>Areel Areel REALTY</h2>
                   <p>Excellence in Real Estate & Transactions</p>
                 </div>
               </div>
@@ -204,7 +204,7 @@ export default function InvoicesListPage() {
             <div style="display: flex; justify-content: space-between; margin-top: 25px; font-size: 9px;">
               <div>
                 <p style="margin: 2px 0;">All sales are final upon signing.</p>
-                <p style="margin: 2px 0;">Authorized property transaction via Divcodex CRM.</p>
+                <p style="margin: 2px 0;">Authorized property transaction via Areel Areel CRM.</p>
               </div>
               <div style="text-align: right;">
                 <p style="margin-bottom: 20px; margin-top: 0;">Authorized Signature:</p>
@@ -214,7 +214,7 @@ export default function InvoicesListPage() {
             </div>
 
             <div class="footer" style="margin-top: 20px;">
-              <p>Divcodex Office, Lahore, Pakistan | Support: support@divcodex.com</p>
+              <p>Areel Areel Office, Lahore, Pakistan | Support: support@Areel Areel.com</p>
             </div>
           </div>
         </body>

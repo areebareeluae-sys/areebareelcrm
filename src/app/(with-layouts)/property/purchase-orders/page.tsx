@@ -142,7 +142,7 @@ export default function PurchaseOrdersListPage() {
               <div class="logo-area">
                 <div class="logo-box">LOGO</div>
                 <div class="company-info">
-                  <h2>DIVCODEX REALTY</h2>
+                  <h2>Areeb Areel REALTY</h2>
                   <p>Purchase Order & Closed Transaction Summary</p>
                 </div>
               </div>
@@ -208,7 +208,7 @@ export default function PurchaseOrdersListPage() {
 
             <div style="display: flex; justify-content: space-between; margin-top: 25px; font-size: 9px;">
               <div>
-                <p style="margin: 2px 0;">All transactions verified via Divcodex CRM.</p>
+                <p style="margin: 2px 0;">All transactions verified via Areeb Areel CRM.</p>
                 <p style="margin: 2px 0;">Status: Officially Closed & Recorded.</p>
               </div>
               <div style="text-align: right;">
@@ -219,7 +219,7 @@ export default function PurchaseOrdersListPage() {
             </div>
 
             <div class="footer" style="margin-top: 20px;">
-              <p>Divcodex Office, Lahore, Pakistan | Support: support@divcodex.com</p>
+              <p>Areel Areel Office, Lahore, Pakistan | Support: support@Areel Areel.com</p>
             </div>
           </div>
         </body>

@@ -105,35 +105,34 @@ export const NAV_DATA = [
           },
         ],
       },
-      // {
-      //   title: "Tables",
-      //   url: "/tables",
-      //   icon: <TableIcon />,
-      //   items: [
-      //     {
-      //       title: "Basic Tables",
-      //       url: "/tables/basic-tables",
-      //     },
-      //   ],
-      // },
-      // {
-      //   title: "Pages",
-      //   icon: <WindowIcon />,
-      //   items: [
-      //     {
-      //       title: "Error Page",
-      //       url: "/error-page",
-      //     },
-      //     {
-      //       title: "Terms & Conditions",
-      //       url: "/terms-and-conditions",
-      //     },
-      //     {
-      //       title: "Mail Success",
-      //       url: "/mail-success",
-      //     },
-      //   ],
-      // },
+      {
+        title: "Uploads",
+        icon: <TableIcon />,
+        items: [
+          {
+            title: "Upload Gards Data",
+            url: "/uploadinformation",
+          },
+        ],
+      },
+      {
+        title: "Search",
+        icon: <AlphabetIcon />,
+        items: [
+          {
+            title: "Overall Search",
+            url: "/search",
+          },
+          // {
+          //   title: "Terms & Conditions",
+          //   url: "/terms-and-conditions",
+          // },
+          // {
+          //   title: "Mail Success",
+          //   url: "/mail-success",
+          // },
+        ],
+      },
     ],
   },
   // {

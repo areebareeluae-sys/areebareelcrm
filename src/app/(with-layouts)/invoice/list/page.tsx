@@ -64,6 +64,7 @@ export default function InvoicesListPage() {
   };
 
   // Professional Print Trigger Function
+ // Professional Print Trigger Function
   const handlePrint = (invoice: any) => {
     const currency = invoice.property?.country?.toLowerCase() === 'pakistan' ? 'PKR' : 'AED';
     const salePrice = Number(invoice.property?.closedprice || 0);
@@ -74,7 +75,8 @@ export default function InvoicesListPage() {
     
     // Grab advance from invoice or nested property.advance
     const advanceAmount = Number(invoice.advanceAmount || invoice.advance || invoice.property?.advance || 0);
-    const remainingBalance = Math.max(0, totalPaid - advanceAmount);
+    const isPaid = invoice.status === 'Paid';
+    const remainingBalance = isPaid ? 0 : Math.max(0, totalPaid - advanceAmount);
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
@@ -86,7 +88,7 @@ export default function InvoicesListPage() {
           <style>
             @page { size: A4; margin: 10mm; }
             body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 0; padding: 0; background: #fff; font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .invoice-box { width: 100%; max-width: 210mm; margin: auto; padding: 5mm; box-sizing: border-box; background: #fff; }
+            .invoice-box { width: 100%; max-width: 210mm; margin: auto; padding: 5mm; box-sizing: border-box; background: #fff; position: relative; }
             .header-banner { background: #3b5998 !important; color: #fff !important; padding: 12px 15px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
             .logo-area { display: flex; align-items: center; gap: 10px; }
             .logo-box { border: 2px solid #fff; padding: 5px 8px; font-weight: bold; font-size: 13px; letter-spacing: 1px; }
@@ -107,12 +109,15 @@ export default function InvoicesListPage() {
             .summary-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f2f2f2; }
             .total-paid-banner { background: #3b5998 !important; color: #fff !important; padding: 8px 10px; font-weight: bold; font-size: 11px; display: flex; justify-content: space-between; border-radius: 3px; margin-top: 6px; }
             .advance-banner { background: #059669 !important; color: #fff !important; padding: 6px 10px; font-weight: bold; font-size: 10px; display: flex; justify-content: space-between; border-radius: 3px; margin-top: 4px; }
+            .paid-stamp { position: absolute; top: 180px; right: 40px; border: 3px solid #059669; color: #059669; font-size: 24px; font-weight: bold; padding: 8px 20px; border-radius: 8px; transform: rotate(-15deg); text-transform: uppercase; letter-spacing: 2px; opacity: 0.85; pointer-events: none; }
 
             .footer { font-size: 8px; color: #777; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
           </style>
         </head>
         <body>
           <div class="invoice-box">
+            ${isPaid ? '<div class="paid-stamp">PAID IN FULL</div>' : ''}
+            
             <div class="header-banner">
               <div class="logo-area">
                 <div class="logo-box">LOGO</div>
@@ -123,6 +128,7 @@ export default function InvoicesListPage() {
               </div>
               <div style="text-align: right; font-size: 10px;">
                 <strong>Invoice ID:</strong> #${invoice.id}<br/>
+                <strong>Status:</strong> <span style="color: ${isPaid ? '#6ee7b7' : '#93c5fd'}; font-weight: bold;">${invoice.status}</span><br/>
                 <strong>Date:</strong> ${new Date(invoice.createdAt).toLocaleDateString()}
               </div>
             </div>
@@ -192,13 +198,18 @@ export default function InvoicesListPage() {
                 <span>${totalPaid.toLocaleString()} ${currency}</span>
               </div>
               <div class="advance-banner">
-                <span>ADVANCE PAID:</span>
-                <span>${advanceAmount.toLocaleString()} ${currency}</span>
+                <span>${isPaid ? 'AMOUNT PAID:' : 'ADVANCE PAID:'}</span>
+                <span>${(isPaid ? totalPaid : advanceAmount).toLocaleString()} ${currency}</span>
               </div>
+              ${!isPaid ? `
               <div class="summary-row" style="margin-top: 4px; font-weight: bold;">
                 <span>Remaining Balance:</span>
-                <span style="color: ${remainingBalance > 0 ? '#dc2626' : '#059669'};">${remainingBalance.toLocaleString()} ${currency}</span>
-              </div>
+                <span style="color: #dc2626;">${remainingBalance.toLocaleString()}${currency}</span>
+              </div>` : `
+              <div class="summary-row" style="margin-top: 4px; font-weight: bold; color: #059669;">
+                <span>Payment Status:</span>
+                <span>Fully Cleared / Paid</span>
+              </div>`}
             </div>
 
             <div style="display: flex; justify-content: space-between; margin-top: 25px; font-size: 9px;">

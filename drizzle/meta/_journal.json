@@ -36,6 +36,20 @@
       "when": 1790968611162,
       "tag": "0004_first_paper_doll",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1791033931530,
+      "tag": "0005_luxuriant_songbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791038810804,
+      "tag": "0006_concerned_blizzard",
+      "breakpoints": true
     }
   ]
 }

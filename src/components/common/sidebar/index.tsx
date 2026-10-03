@@ -3,7 +3,7 @@
 import { buttonStyles } from '@/components/tailgrids/core/button';
 import { CollapsibleGroup } from '@/components/tailgrids/core/collapsible';
 import { cn } from '@/utils/cn';
-import { LogoA,LogoText } from '@/utils/icon';
+import { LogoA, LogoText } from '@/utils/icon';
 import { useTheme } from 'next-themes';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -117,7 +117,7 @@ export default function Sidebar({
                                         id={item.title}
                                         icon={item.icon}
                                         label={item.title}
-                                        href={item.url}
+                                        href={'url' in item ? (item as any).url : '#'}
                                         items={item.items}
                                         collapsed={!isSidebarOpen}
                                         onItemClick={onItemClick}
@@ -134,7 +134,7 @@ export default function Sidebar({
                 <div className='px-4 py-4'>
                     <div className='rounded-2xl bg-background-gray-primary px-4 py-5 text-center'>
                         <p className='mb-2 leading-6 font-semibold text-text-primary'>
-                           CRM AREEBAREEEL
+                            CRM AREEBAREEEL
                         </p>
                     </div>
                 </div>

@@ -40,6 +40,7 @@ export async function GET(req: Request) {
       const term = `%${search}%`;
       conditions.push(
         or(
+          like(property.id, term),       // 👈 Yahan Property ID ki search add kar di gayi hai
           like(property.title, term),
           like(property.city, term),
           like(property.type, term)
@@ -75,7 +76,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { propertyId, buyercustomerid, closedprice, advance, fullpaymentdate, closeddate } = body;
+    const { propertyId, buyercustomerid, closedprice, advance, fullpaymentdate, closeddate, purchaseorderid } = body;
 
     const cookieHeader = req.headers.get('cookie') || '';
     const match = cookieHeader.match(/userId=([^;]+)/);
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
         advance: String(advance),
         fullpaymentdate: String(fullpaymentdate),
         closeddate: closeddate || new Date().toISOString().split('T')[0],
+        Purchaseorderid: purchaseorderid ? String(purchaseorderid) : `PO-${Date.now()}`,
         status: 'Closed',
       })
       .where(eq(property.id, propertyId));

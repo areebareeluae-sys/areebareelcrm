@@ -121,6 +121,39 @@ export default function CreateInvoicePage() {
     alert('Invoice ID copied to clipboard!');
   };
 
+  // Enhanced filtering supporting ID, Purchaseorderid, Title, City, Country, Buyer & Seller names
+  const filteredProperties = properties.filter((p) => {
+    let query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+
+    // Remove 'po-' prefix if user typed it
+    if (query.startsWith('po-')) {
+      query = query.replace('po-', '');
+    } else if (query.startsWith('po')) {
+      query = query.replace('po', '');
+    }
+
+    const title = (p.title || '').toLowerCase();
+    const city = (p.city || '').toLowerCase();
+    const country = (p.country || '').toLowerCase();
+    const propertyId = p.id ? String(p.id).toLowerCase() : '';
+    const purchaseOrderId = p.Purchaseorderid ? String(p.Purchaseorderid).toLowerCase() : '';
+    const buyerName = (p.buyer?.fullname || '').toLowerCase();
+    const sellerName = (p.seller?.fullname || '').toLowerCase();
+
+    return (
+      title.includes(query) ||
+      city.includes(query) ||
+      country.includes(query) ||
+      propertyId.includes(query) ||
+      purchaseOrderId.includes(query) ||
+      buyerName.includes(query) ||
+      sellerName.includes(query) ||
+      propertyId === query ||
+      purchaseOrderId === query
+    );
+  });
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
       <div className="flex justify-between items-center border-b pb-4">
@@ -147,7 +180,13 @@ export default function CreateInvoicePage() {
         {selectedProperty ? (
           <div className="space-y-4 text-sm">
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><span className="text-xs text-gray-500 block">Property Title</span><strong className="text-blue-900">{selectedProperty.title}</strong></div>
+              <div>
+                <span className="text-xs text-gray-500 block">Property Title & IDs</span>
+                <strong className="text-blue-900">
+                  {selectedProperty.title} 
+                  {selectedProperty.Purchaseorderid && <span className="block text-xs font-mono text-indigo-700">PO ID: {selectedProperty.Purchaseorderid}</span>}
+                </strong>
+              </div>
               <div><span className="text-xs text-gray-500 block">Location</span><strong className="text-gray-800">{selectedProperty.city}, {selectedProperty.country}</strong></div>
               <div><span className="text-xs text-gray-500 block">Closed Date</span><strong className="text-purple-700">{selectedProperty.closeddate || 'N/A'}</strong></div>
             </div>
@@ -307,28 +346,40 @@ export default function CreateInvoicePage() {
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 font-bold text-xl">×</button>
             </div>
 
-            <input
-              type="text"
-              placeholder="Search by title, city, type..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                fetchClosedProperties(e.target.value);
-              }}
-              className="w-full border rounded-xl px-3 py-2 text-sm outline-none"
-            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="Search by PO ID, Title, City, Buyer/Seller..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  fetchClosedProperties(e.target.value);
+                }}
+                className="w-full border rounded-xl px-3 py-2 text-sm outline-none"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => { setSearchQuery(''); fetchClosedProperties(''); }}
+                  className="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded-xl font-medium"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
 
-            <div className="max-h-72 overflow-y-auto space-y-3 divide-y">
-              {properties.length === 0 ? (
+            <div className="max-h-80 overflow-y-auto space-y-3 divide-y">
+              {filteredProperties.length === 0 ? (
                 <p className="text-center text-gray-400 py-4 text-sm">No closed properties found.</p>
               ) : (
-                properties.map((p) => {
+                filteredProperties.map((p) => {
                   const curr = getCurrency(p.country);
                   return (
-                    <div key={p.id} className="pt-3 pb-2 flex justify-between items-center">
+                    <div key={p.id} className="pt-3 pb-2 flex justify-between items-start border-b last:border-none">
                       <div className="space-y-1">
                         <p className="font-semibold text-sm text-gray-800">
-                          {p.title} {p.existingInvoice && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold ml-1">Invoice Exists</span>}
+                          {p.title} 
+                          {p.Purchaseorderid && <span className="text-xs font-mono text-indigo-600 ml-1 font-bold">(PO: {p.Purchaseorderid})</span>}
+                          {p.existingInvoice && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold ml-1">Invoice Exists</span>}
                         </p>
                         <p className="text-xs text-gray-500">
                           📍 {p.city}, {p.country} • Closed Date: <span className="font-medium text-gray-700">{p.closeddate || 'N/A'}</span>
@@ -343,7 +394,7 @@ export default function CreateInvoicePage() {
                       <button
                         type="button"
                         onClick={() => handleSelectProperty(p)}
-                        className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-100 h-fit"
+                        className="bg-blue-50 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-blue-100 h-fit ml-2 shrink-0"
                       >
                         Select
                       </button>

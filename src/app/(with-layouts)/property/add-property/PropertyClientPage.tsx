@@ -24,6 +24,7 @@ interface PropertyItem {
   refaddress: string;
   title: string;
   description: string;
+  tags?: string;
   maxprice: string;
   minprice: string;
   category: string;
@@ -59,6 +60,8 @@ export default function PropertyClientPage({
   customers?: Customer[],
   initialSearch?: string
 }) {
+  const [tagsInput, setTagsInput] = useState('');
+const [tags, setTags] = useState<string[]>([]);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState(initialSearch);
@@ -162,6 +165,8 @@ export default function PropertyClientPage({
     setRefEmail('');
     setRefAddress('');
     setTitle('');
+    setTags([]);
+     setTagsInput('');
     setDescription('');
     setMaxPrice('');
     setMinPrice('');
@@ -215,6 +220,7 @@ export default function PropertyClientPage({
       formData.append('maxprice', maxPrice.replace(/,/g, ''));
       formData.append('minprice', minPrice.replace(/,/g, ''));
       formData.append('category', category);
+      formData.append('tags', JSON.stringify(tags));
       formData.append('type', type);
       formData.append('address', address);
       formData.append('city', city);
@@ -265,7 +271,11 @@ export default function PropertyClientPage({
     setArea(prop.area);
     setGarages(prop.Garages);
     setSalesCustomerId(prop.salescustomerid);
-    
+    try {
+  setTags(JSON.parse(prop.tags || '[]'));
+} catch {
+  setTags([]);
+}
     try {
       setSelectedImages(JSON.parse(prop.images || '[]'));
     } catch {
@@ -550,7 +560,56 @@ export default function PropertyClientPage({
               placeholder="Detailed property description..."
             />
           </div>
-
+{/* Tags Section */}
+<div className="md:col-span-3 space-y-2">
+  <label className="block text-xs font-semibold text-gray-600">Tags</label>
+  <div className="flex gap-2">
+    <input
+      type="text"
+      value={tagsInput}
+      onChange={(e) => setTagsInput(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (tagsInput.trim() && !tags.includes(tagsInput.trim())) {
+            setTags([...tags, tagsInput.trim()]);
+            setTagsInput('');
+          }
+        }
+      }}
+      className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+      placeholder="Type a tag and press Enter..."
+    />
+    <button
+      type="button"
+      onClick={() => {
+        if (tagsInput.trim() && !tags.includes(tagsInput.trim())) {
+          setTags([...tags, tagsInput.trim()]);
+          setTagsInput('');
+        }
+      }}
+      className="bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+    >
+      Add Tag
+    </button>
+  </div>
+  {tags.length > 0 && (
+    <div className="flex flex-wrap gap-2 mt-2">
+      {tags.map((tag, idx) => (
+        <span key={idx} className="bg-blue-50 text-blue-700 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1.5 border border-blue-100">
+          {tag}
+          <button
+            type="button"
+            onClick={() => setTags(tags.filter((_, i) => i !== idx))}
+            className="text-blue-500 hover:text-red-600 font-bold ml-1"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
+  )}
+</div>
           <div className="md:col-span-3 space-y-2">
             <label className="block text-xs font-semibold text-gray-600">
               Upload Images (Max 10 images, max 500KB each)

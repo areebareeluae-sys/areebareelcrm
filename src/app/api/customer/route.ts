@@ -6,11 +6,12 @@ import { eq, or, like, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+
 // 1. Get All Customers (with optional search filter & status filter)
 export async function getCustomers(searchQuery?: string, statusFilter?: string) {
   let conditions = [];
 
-  // Search filter check
+  // Search filter check (Updated to include tags)
   if (searchQuery && searchQuery.trim() !== '') {
     const term = `%${searchQuery}%`;
     conditions.push(
@@ -18,7 +19,8 @@ export async function getCustomers(searchQuery?: string, statusFilter?: string) 
         like(customer.fullname, term),
         like(customer.email, term),
         like(customer.phone, term),
-        like(customer.city, term)
+        like(customer.city, term),
+        like(customer.tags, term) // <-- Tags par bhi search chalegi
       )
     );
   }
@@ -46,6 +48,7 @@ export async function addCustomer(formData: FormData) {
   const country = formData.get('country') as string;
   const city = formData.get('city') as string;
   const address = formData.get('address') as string;
+  const tags = formData.get('tags') as string; // <-- Tags get kiya
   
   const refname = formData.get('refname') as string;
   const refnumber = formData.get('refnumber') as string;
@@ -61,6 +64,7 @@ export async function addCustomer(formData: FormData) {
       country,
       city,
       address,
+      tags, // <-- DB mein insert kiya
       refname,
       refnumber,
       refemail,
@@ -86,6 +90,7 @@ export async function updateCustomer(id: string, formData: FormData) {
   const country = formData.get('country') as string;
   const city = formData.get('city') as string;
   const address = formData.get('address') as string;
+  const tags = formData.get('tags') as string; // <-- Tags get kiya
   
   const refname = formData.get('refname') as string;
   const refnumber = formData.get('refnumber') as string;
@@ -101,6 +106,7 @@ export async function updateCustomer(id: string, formData: FormData) {
         country,
         city,
         address,
+        tags, // <-- DB mein update kiya
         refname,
         refnumber,
         refemail,

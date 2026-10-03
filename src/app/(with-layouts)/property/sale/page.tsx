@@ -97,7 +97,6 @@ export default function PurchaseOrderPage() {
     return res.trim() + ' Only';
   };
 
-  // Jab input change ho toh raw number save karein
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     const rawValue = e.target.value.replace(/,/g, '');
     if (!isNaN(Number(rawValue))) {
@@ -114,10 +113,10 @@ export default function PurchaseOrderPage() {
 
   const handleSelectBuyer = (buyer: any) => {
     if (selectedProperty) {
-      const sellerId = selectedProperty.salescustomerid;
-      const sellerEmail = selectedProperty.seller?.email;
+      const sellerId = String(selectedProperty.salescustomerid || '').trim();
+      const buyerId = String(buyer.id || '').trim();
 
-      if (buyer.id === sellerId || (sellerEmail && buyer.email === sellerEmail)) {
+      if (buyerId === sellerId && buyerId !== '') {
         alert('Error: The buyer and the seller cannot be the same person. Please select a different buyer.');
         return;
       }
@@ -128,10 +127,10 @@ export default function PurchaseOrderPage() {
 
   const handleSelectProperty = (property: any) => {
     if (selectedBuyer) {
-      const sellerId = property.salescustomerid;
-      const sellerEmail = property.seller?.email;
+      const sellerId = String(property.salescustomerid || '').trim();
+      const buyerId = String(selectedBuyer.id || '').trim();
 
-      if (selectedBuyer.id === sellerId || (sellerEmail && selectedBuyer.email === sellerEmail)) {
+      if (buyerId === sellerId && buyerId !== '') {
         alert('Error: The buyer and the seller cannot be the same person. Please select a different property or change the buyer.');
         return;
       }
@@ -147,7 +146,10 @@ export default function PurchaseOrderPage() {
     if (!advance) { alert('Please enter advance amount!'); return; }
     if (!fullPaymentDate) { alert('Please select full payment date!'); return; }
 
-    if (selectedBuyer.id === selectedProperty.salescustomerid || (selectedProperty.seller?.email && selectedBuyer.email === selectedProperty.seller.email)) {
+    const sellerId = String(selectedProperty.salescustomerid || '').trim();
+    const buyerId = String(selectedBuyer.id || '').trim();
+
+    if (buyerId === sellerId && buyerId !== '') {
       alert('Error: Buyer and Seller cannot be the same!');
       return;
     }
@@ -182,6 +184,25 @@ export default function PurchaseOrderPage() {
       setSubmitting(false);
     }
   };
+
+  // Client-side filtering enhancement for property modal supporting ID, Title, City, Country
+  const filteredProperties = properties.filter((p) => {
+    const query = propertySearch.toLowerCase().trim();
+    if (!query) return true;
+
+    const title = (p.title || '').toLowerCase();
+    const city = (p.city || '').toLowerCase();
+    const country = (p.country || '').toLowerCase();
+    const propertyId = p.id ? String(p.id).toLowerCase() : '';
+
+    return (
+      title.includes(query) ||
+      city.includes(query) ||
+      country.includes(query) ||
+      propertyId.includes(query) ||
+      propertyId === query
+    );
+  });
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-8">
@@ -239,7 +260,7 @@ export default function PurchaseOrderPage() {
           {selectedProperty ? (
             <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl space-y-2 text-sm">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                <div><span className="text-xs text-gray-500 block">Title</span><span className="font-bold text-blue-900">{selectedProperty.title}</span></div>
+                <div><span className="text-xs text-gray-500 block">Title & ID</span><span className="font-bold text-blue-900">{selectedProperty.title} <strong className="text-gray-500">(#{selectedProperty.id})</strong></span></div>
                 <div><span className="text-xs text-gray-500 block">Category / Type</span><span className="font-semibold text-gray-700">{selectedProperty.category} - {selectedProperty.type}</span></div>
                 <div><span className="text-xs text-gray-500 block">Location</span><span className="font-semibold text-gray-700">{selectedProperty.city}, {selectedProperty.country}</span></div>
                 <div>
@@ -295,7 +316,7 @@ export default function PurchaseOrderPage() {
               {/* Property Info */}
               <div className="bg-white p-3 rounded-lg border shadow-sm">
                 <span className="text-xs text-indigo-600 font-bold block mb-1">Property Information</span>
-                <p><span className="text-gray-500">Title:</span> <strong className="text-gray-800">{selectedProperty.title}</strong></p>
+                <p><span className="text-gray-500">Title & ID:</span> <strong className="text-gray-800">{selectedProperty.title} (#{selectedProperty.id})</strong></p>
                 <p><span className="text-gray-500">Location:</span> <strong className="text-gray-800">{selectedProperty.city}, {selectedProperty.country}</strong></p>
                 <p><span className="text-gray-500">Price Range:</span> <strong className="text-green-700">{formatPrice(selectedProperty.minprice, selectedProperty.country)} - {formatPrice(selectedProperty.maxprice, selectedProperty.country)}</strong></p>
               </div>
@@ -305,7 +326,7 @@ export default function PurchaseOrderPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             
-            {/* Closed Price with Comma Formatting & English Words */}
+            {/* Closed Price */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-600 uppercase">
                 Closed Price ({selectedProperty.country?.toLowerCase() === 'pakistan' ? 'PKR' : 'AED'})
@@ -324,7 +345,7 @@ export default function PurchaseOrderPage() {
               )}
             </div>
 
-            {/* Advance Amount with Comma Formatting & English Words */}
+            {/* Advance Amount */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-gray-600 uppercase">
                 Advance Amount ({selectedProperty.country?.toLowerCase() === 'pakistan' ? 'PKR' : 'AED'})
@@ -404,19 +425,38 @@ export default function PurchaseOrderPage() {
               <h3 className="font-bold text-gray-800 text-lg">Select Active Property</h3>
               <button onClick={() => setIsPropertyModalOpen(false)} className="text-gray-400 font-bold text-xl">×</button>
             </div>
-            <input
-              type="text"
-              placeholder="Search property by title, city..."
-              value={propertySearch}
-              onChange={(e) => { setPropertySearch(e.target.value); fetchActiveProperties(e.target.value); }}
-              className="w-full border rounded-xl px-3 py-2 text-sm outline-none"
-            />
+            
+            <div className="flex items-center space-x-2">
+              <input
+                type="text"
+                placeholder="Search by Property ID, Title, City..."
+                value={propertySearch}
+                onChange={(e) => {
+                  setPropertySearch(e.target.value);
+                  fetchActiveProperties(e.target.value);
+                }}
+                className="w-full border rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {propertySearch && (
+                <button
+                  onClick={() => { setPropertySearch(''); fetchActiveProperties(''); }}
+                  className="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded-xl font-medium"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
             <div className="max-h-60 overflow-y-auto space-y-2 divide-y">
-              {properties.length === 0 ? <p className="text-center text-gray-400 py-4 text-sm">No active properties found.</p> :
-                properties.map((p) => (
+              {filteredProperties.length === 0 ? (
+                <p className="text-center text-gray-400 py-4 text-sm">No active properties found.</p>
+              ) : (
+                filteredProperties.map((p) => (
                   <div key={p.id} className="pt-3 pb-2 flex justify-between items-center border-b last:border-none">
                     <div>
-                      <p className="font-semibold text-sm text-gray-800">{p.title}</p>
+                      <p className="font-semibold text-sm text-gray-800">
+                        {p.title} <strong className="text-indigo-600">(#{p.id})</strong>
+                      </p>
                       <p className="text-xs text-gray-500">📍 {p.city}, {p.country} • Seller ID: {p.salescustomerid}</p>
                       <p className="text-xs font-bold text-green-700 mt-0.5">
                         {formatPrice(p.minprice, p.country)} - {formatPrice(p.maxprice, p.country)}
@@ -427,7 +467,7 @@ export default function PurchaseOrderPage() {
                     </button>
                   </div>
                 ))
-              }
+              )}
             </div>
           </div>
         </div>

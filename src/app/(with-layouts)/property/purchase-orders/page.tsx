@@ -142,13 +142,13 @@ export default function PurchaseOrdersListPage() {
               <div class="logo-area">
                 <div class="logo-box">LOGO</div>
                 <div class="company-info">
-                  <h2>Areeb Areel REALTY</h2>
+                  <h2>areebareel Realty</h2>
                   <p>Purchase Order & Closed Transaction Summary</p>
                 </div>
               </div>
               <div style="text-align: right; font-size: 10px;">
-                <strong>Order ID:</strong> #${order.id}<br/>
-                <strong>Property ID:</strong> ${order.id}<br/>
+                <strong>PO ID:</strong> ${order.Purchaseorderid || 'N/A'}<br/>
+                <strong>Property ID:</strong> #${order.id}<br/>
                 <strong>Closed Date:</strong> ${displayClosedDate}<br/>
                 <strong>Full Payment Date:</strong> ${displayFullPaymentDate}
               </div>
@@ -184,7 +184,7 @@ export default function PurchaseOrdersListPage() {
                   <td>1</td>
                   <td>
                     <strong>${order.title || 'Property Deal'}</strong><br/>
-                    <span style="color: #666; font-size: 8px;">Property ID: ${order.id} | Location: ${order.city || ''}, ${order.country || ''} | Category: ${order.category || 'N/A'}</span>
+                    <span style="color: #666; font-size: 8px;">Property ID: #${order.id} | PO ID: ${order.Purchaseorderid || 'N/A'} | Location: ${order.address || ''}, ${order.city || ''}, ${order.country || ''} | Category: ${order.category || 'N/A'}</span>
                   </td>
                   <td class="text-right">${salePrice.toLocaleString()}</td>
                 </tr>
@@ -208,7 +208,7 @@ export default function PurchaseOrdersListPage() {
 
             <div style="display: flex; justify-content: space-between; margin-top: 25px; font-size: 9px;">
               <div>
-                <p style="margin: 2px 0;">All transactions verified via Areeb Areel CRM.</p>
+                <p style="margin: 2px 0;">All transactions verified via CRM System.</p>
                 <p style="margin: 2px 0;">Status: Officially Closed & Recorded.</p>
               </div>
               <div style="text-align: right;">
@@ -219,7 +219,7 @@ export default function PurchaseOrdersListPage() {
             </div>
 
             <div class="footer" style="margin-top: 20px;">
-              <p>Areel Areel Office, Lahore, Pakistan | Support: support@Areel Areel.com</p>
+              <p>Lahore, Pakistan | Support Support</p>
             </div>
           </div>
         </body>
@@ -230,36 +230,64 @@ export default function PurchaseOrdersListPage() {
     setTimeout(() => { printWindow.print(); }, 500);
   };
 
-  // Pagination Logic
+  // Client-side filtering enhancement (searches by title, city, property ID, buyer name, or purchase order ID)
+  const filteredOrders = orders.filter((order) => {
+    const query = search.toLowerCase();
+    const buyerName = (order.buyer?.fullname || order.buyer?.name || order.buyer?.refname || order.buyer_name || order.customer_name || '').toLowerCase();
+    const title = (order.title || '').toLowerCase();
+    const city = (order.city || '').toLowerCase();
+    const country = (order.country || '').toLowerCase();
+    const propertyId = (order.id || '').toLowerCase();
+    const poId = (order.Purchaseorderid || '').toLowerCase();
+
+    return (
+      title.includes(query) ||
+      city.includes(query) ||
+      country.includes(query) ||
+      buyerName.includes(query) ||
+      propertyId.includes(query) ||
+      poId.includes(query)
+    );
+  });
+
+  // Pagination Logic based on filtered results
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentOrders = orders.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(orders.length / itemsPerPage);
+  const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex justify-between items-center border-b pb-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Purchase Orders & Closed Deals</h1>
-          <p className="text-sm text-gray-500">Manage closed property transactions, view details, print, or process refunds.</p>
+          <p className="text-sm text-gray-500">Manage closed property transactions, view complete info, print, or process refunds.</p>
         </div>
         <Link href="/property/list" className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-blue-700 transition">
           + New Sale / Purchase Order
         </Link>
       </div>
 
-      {/* Search Filter */}
+      {/* Search Filter with Property ID & Details support */}
       <div className="flex items-center space-x-4">
         <input
           type="text"
-          placeholder="Search by property title, city, buyer..."
+          placeholder="Search by Property ID, Title, City, Buyer, PO ID..."
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            fetchClosedProperties(e.target.value);
+            setCurrentPage(1);
           }}
-          className="w-full md:w-80 border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full md:w-96 border rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
         />
+        {search && (
+          <button 
+            onClick={() => setSearch('')} 
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2.5 rounded-xl font-medium"
+          >
+            Clear Search
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -269,7 +297,8 @@ export default function PurchaseOrdersListPage() {
             <thead>
               <tr className="bg-gray-50 border-b text-xs font-bold text-gray-500 uppercase tracking-wider">
                 <th className="p-4">Date</th>
-                <th className="p-4">Property Title</th>
+                <th className="p-4">Property Info & IDs</th>
+                <th className="p-4">Location</th>
                 <th className="p-4">Buyer Name</th>
                 <th className="p-4">Closed Price</th>
                 <th className="p-4">Advance</th>
@@ -278,9 +307,9 @@ export default function PurchaseOrdersListPage() {
             </thead>
             <tbody className="divide-y text-sm">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">Loading closed orders...</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-gray-400">Loading closed orders...</td></tr>
               ) : currentOrders.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-8 text-gray-400">No closed purchase orders found.</td></tr>
+                <tr><td colSpan={7} className="text-center py-8 text-gray-400">No closed purchase orders found.</td></tr>
               ) : (
                 currentOrders.map((order) => {
                   const buyerDisplayName = order.buyer?.fullname || order.buyer?.name || order.buyer?.refname || order.buyer_name || order.customer_name || 'N/A';
@@ -288,15 +317,18 @@ export default function PurchaseOrdersListPage() {
 
                   return (
                     <tr key={order.id} className="hover:bg-gray-50/50">
-                      <td className="p-4 text-gray-600">{displayDate}</td>
+                      <td className="p-4 text-gray-600 whitespace-nowrap">{displayDate}</td>
                       <td className="p-4 font-semibold text-gray-800">
                         {order.title} 
-                        <span className="block text-xs text-gray-400 font-normal">ID: {order.id} | {order.city}, {order.country}</span>
+                        <span className="block text-xs text-gray-400 font-normal">
+                          Prop ID: <strong className="text-gray-600">#{order.id}</strong> {order.Purchaseorderid ? `| PO ID: ${order.Purchaseorderid}` : ''}
+                        </span>
                       </td>
+                      <td className="p-4 text-gray-600">{order.city}, {order.country}</td>
                       <td className="p-4 text-gray-700">{buyerDisplayName}</td>
                       <td className="p-4 font-bold text-green-700">{formatPrice(order.closedprice, order.country)}</td>
                       <td className="p-4 font-semibold text-gray-700">{formatPrice(order.advance, order.country)}</td>
-                      <td className="p-4 text-center space-x-2">
+                      <td className="p-4 text-center space-x-2 whitespace-nowrap">
                         <button
                           onClick={() => { setSelectedOrder(order); setIsModalOpen(true); }}
                           className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-gray-200"
@@ -327,7 +359,7 @@ export default function PurchaseOrdersListPage() {
         {/* PAGINATION CONTROLS */}
         {totalPages > 1 && (
           <div className="flex justify-between items-center p-4 border-t bg-gray-50 text-xs text-gray-600">
-            <span>Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, orders.length)} of {orders.length} entries</span>
+            <span>Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredOrders.length)} of {filteredOrders.length} entries</span>
             <div className="flex gap-1">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -364,8 +396,8 @@ export default function PurchaseOrdersListPage() {
             
             <div className="flex justify-between items-center border-b pb-3">
               <div>
-                <h3 className="font-bold text-gray-900 text-lg">Closed Order / Property Details</h3>
-                <p className="text-xs text-gray-400">Order ID / Property ID: #{selectedOrder.id} | Closed Date: {selectedOrder.closeddate ? new Date(selectedOrder.closeddate).toLocaleDateString() : 'N/A'}</p>
+                <h3 className="font-bold text-gray-900 text-lg">Closed Order & Property Details</h3>
+                <p className="text-xs text-gray-500">Property ID: #{selectedOrder.id} | PO ID: {selectedOrder.Purchaseorderid || 'N/A'} | Closed Date: {selectedOrder.closeddate ? new Date(selectedOrder.closeddate).toLocaleDateString() : 'N/A'}</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700 font-bold text-2xl">×</button>
             </div>
@@ -391,29 +423,34 @@ export default function PurchaseOrdersListPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1 md:col-span-2">
-                <h4 className="font-bold text-indigo-700 uppercase tracking-wider border-b pb-1">Property Info</h4>
+              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1.5 md:col-span-2">
+                <h4 className="font-bold text-indigo-700 uppercase tracking-wider border-b pb-1">Complete Property Information</h4>
                 <p><strong>Property ID:</strong> #{selectedOrder.id}</p>
+                <p><strong>Purchase Order ID:</strong> {selectedOrder.Purchaseorderid || 'N/A'}</p>
                 <p><strong>Title:</strong> {selectedOrder.title}</p>
-                <p><strong>Category:</strong> {selectedOrder.category} ({selectedOrder.type})</p>
-                <p><strong>Location:</strong> {selectedOrder.city}, {selectedOrder.country}</p>
-                <p><strong>Closed Price:</strong> <span className="text-green-700 font-bold">{formatPrice(selectedOrder.closedprice, selectedOrder.country)}</span></p>
+                <p><strong>Category & Type:</strong> {selectedOrder.category} ({selectedOrder.type})</p>
+                <p><strong>Full Address:</strong> {selectedOrder.address}, {selectedOrder.city}, {selectedOrder.country}</p>
+                <p><strong>Bedrooms / Bathrooms / Area:</strong> {selectedOrder.bedrooms} Beds | {selectedOrder.bathrooms} Baths | {selectedOrder.area} sqft</p>
+                <p><strong>Closed Price:</strong> <span className="text-green-700 font-bold text-sm">{formatPrice(selectedOrder.closedprice, selectedOrder.country)}</span></p>
+                <p><strong>Advance Paid:</strong> {formatPrice(selectedOrder.advance, selectedOrder.country)}</p>
                 <p><strong>Closed Date & Time:</strong> {selectedOrder.closeddate ? new Date(selectedOrder.closeddate).toLocaleString() : 'N/A'}</p>
                 <p><strong>Full Payment Date:</strong> {selectedOrder.fullpaymentdate ? new Date(selectedOrder.fullpaymentdate).toLocaleString() : 'N/A'}</p>
               </div>
 
-              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1">
+              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1.5">
                 <h4 className="font-bold text-blue-600 uppercase tracking-wider border-b pb-1">Buyer Details</h4>
                 <p><strong>Name:</strong> {selectedOrder.buyer?.fullname || selectedOrder.buyer?.name || selectedOrder.buyer?.refname || selectedOrder.buyer_name || selectedOrder.customer_name || 'N/A'}</p>
                 <p><strong>Phone:</strong> {selectedOrder.buyer?.phone || selectedOrder.buyer?.mobileno || selectedOrder.buyer?.refnumber || selectedOrder.buyer_phone || 'N/A'}</p>
                 <p><strong>Email:</strong> {selectedOrder.buyer?.email || selectedOrder.buyer?.refemail || selectedOrder.buyer_email || 'N/A'}</p>
+                <p><strong>Address:</strong> {selectedOrder.buyer?.address || selectedOrder.buyer?.refaddress || 'N/A'}</p>
               </div>
 
-              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1">
+              <div className="bg-gray-50 p-3.5 rounded-xl border space-y-1.5">
                 <h4 className="font-bold text-purple-600 uppercase tracking-wider border-b pb-1">Seller Details</h4>
                 <p><strong>Name:</strong> {selectedOrder.seller?.fullname || selectedOrder.seller?.refname || selectedOrder.sellername || 'N/A'}</p>
                 <p><strong>Phone:</strong> {selectedOrder.seller?.phone || selectedOrder.seller?.refnumber || selectedOrder.sellerphone || 'N/A'}</p>
                 <p><strong>Email:</strong> {selectedOrder.seller?.email || selectedOrder.seller?.refemail || selectedOrder.selleremail || 'N/A'}</p>
+                <p><strong>Address:</strong> {selectedOrder.seller?.address || selectedOrder.seller?.refaddress || 'N/A'}</p>
               </div>
             </div>
 

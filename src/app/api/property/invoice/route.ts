@@ -8,16 +8,31 @@ import { cookies } from 'next/headers';
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const search = searchParams.get('search') || '';
+    let search = searchParams.get('search') || '';
     
     const conditions: SQL[] = [eq(property.status, 'Closed')];
+    
     if (search && search.trim() !== '') {
-      const term = `%${search}%`;
+      // Remove 'PO-' or 'po-' prefix if user typed it in search box
+      let cleanSearch = search.trim();
+      if (cleanSearch.toLowerCase().startsWith('po-')) {
+        cleanSearch = cleanSearch.slice(3);
+      } else if (cleanSearch.toLowerCase().startsWith('po')) {
+        cleanSearch = cleanSearch.slice(2);
+      }
+
+      const term = `%${cleanSearch}%`;
+      const rawTerm = `%${search.trim()}%`;
+
       conditions.push(
         or(
-          like(property.title, term),
-          like(property.city, term),
-          like(property.type, term)
+          like(property.id, rawTerm),
+          like(property.Purchaseorderid, rawTerm),
+          like(property.id, term),
+          like(property.Purchaseorderid, term),
+          like(property.title, rawTerm),
+          like(property.city, rawTerm),
+          like(property.type, rawTerm)
         )!
       );
     }

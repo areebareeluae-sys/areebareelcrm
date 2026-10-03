@@ -24,6 +24,7 @@ export const customer = sqliteTable('customer',{
   country : text('country').notNull(),
   city : text('city').notNull(),
   address : text('address').notNull(),
+  tags: text('tags').notNull(),
   createdby : text('createdby').notNull(),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'), 
@@ -48,6 +49,8 @@ export const property = sqliteTable('property', {
   area : numeric('area').notNull(),
   Garages : integer('garages').notNull(),
   images : text('images').notNull(),
+  Purchaseorderid : text('Purchaseorderid').default(''),
+  tags: text('tags').notNull(),
   salescustomerid : text('salescustomerid').notNull(),
   buyercustomerid : text('buyercustomerid').notNull(),
   advance : numeric('advance').notNull(),
@@ -79,6 +82,16 @@ export const activity_logs = sqliteTable('activity_logs', {
   performed_by : text('performed_by').notNull(),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
  
+});
+export const securityGuards = sqliteTable('security_guards', {
+  id: text('id').primaryKey(),
+  buildingNo: integer('building_no').notNull(),
+  buildingName: text('building_name').notNull(),
+  securityGuard: text('security_guard').notNull(),
+  contactNumber: text('contact_number').notNull(),
+  constructionStatus: text('construction_status').notNull(),
+  tags: text('tags').default(''), // Tags column for editing & categorization
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
 });
 
 

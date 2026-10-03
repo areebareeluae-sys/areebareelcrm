@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { v2 as cloudinary } from 'cloudinary';
 import { NextResponse } from 'next/server';
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'y556pcib',
   api_key: process.env.CLOUDINARY_API_KEY || '475551924862539',
@@ -29,6 +30,7 @@ function getPublicIdFromUrl(url: string) {
     return null;
   }
 }
+
 export async function getPropertyDetails(id: string) {
   try {
     const prop = await db.select().from(property).where(eq(property.id, id));
@@ -61,6 +63,7 @@ export async function getPropertyDetails(id: string) {
     return { success: false, message: 'Internal Server Error' };
   }
 }
+
 // 1. Get All Properties with search filter
 export async function getProperties(searchQuery?: string) {
   if (searchQuery && searchQuery.trim() !== '') {
@@ -113,6 +116,9 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
   const bedrooms = Number(formData.get('bedrooms'));
   const area = formData.get('area') as string;
   const Garages = Number(formData.get('Garages'));
+  
+  // 👈 Tags handle karna yahan add kiya gaya hai
+  const tags = formData.get('tags') as string || '[]';
 
   const refname = formData.get('refname') as string;
   const refnumber = formData.get('refnumber') as string;
@@ -136,6 +142,8 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
       area,
       Garages,
       images: JSON.stringify(imageUrls),
+      tags, // 👈 Insert mein tags pass kar diye
+      Purchaseorderid: "",
       salescustomerid,
       buyercustomerid: '',
       createdby: userId,
@@ -145,8 +153,8 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
       status: 'Active',
       refname,
       refnumber,
-      advance:"0",
-      fullpaymentdate:"",
+      advance: "0",
+      fullpaymentdate: "",
       refemail,
       refaddress,
       createdAt: new Date().toISOString(),
@@ -175,6 +183,9 @@ export async function updateProperty(id: string, formData: FormData, salescustom
   const bedrooms = Number(formData.get('bedrooms'));
   const area = formData.get('area') as string;
   const Garages = Number(formData.get('Garages'));
+
+  // 👈 Tags handle karna update mein bhi add kiya gaya hai
+  const tags = formData.get('tags') as string || '[]';
 
   const refname = formData.get('refname') as string;
   const refnumber = formData.get('refnumber') as string;
@@ -222,6 +233,7 @@ export async function updateProperty(id: string, formData: FormData, salescustom
         area,
         Garages,
         images: JSON.stringify(imageUrls),
+        tags, // 👈 Update mein tags save kar diye
         salescustomerid,
         refname,
         refnumber,
@@ -270,6 +282,7 @@ export async function deleteProperty(id: string) {
     return { success: false, error: 'Failed to delete property.' };
   }
 }
+
 export async function GET() {
   try {
     const data = await db.select().from(property);

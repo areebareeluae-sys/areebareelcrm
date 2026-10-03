@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1790852396516,
+      "tag": "0000_watery_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1790870112552,
+      "tag": "0001_careless_texas_twister",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790877293043,
+      "tag": "0002_sharp_machine_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790967324032,
+      "tag": "0003_misty_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790968611162,
+      "tag": "0004_first_paper_doll",
+      "breakpoints": true
+    }
+  ]
+}

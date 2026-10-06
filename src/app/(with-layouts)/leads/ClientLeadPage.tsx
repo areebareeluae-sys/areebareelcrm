@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function ClientLeadPage({
@@ -24,6 +24,12 @@ export default function ClientLeadPage({
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   
+  // State for viewing full remarks in a popup modal
+  const [viewingRemark, setViewingRemark] = useState<string | null>(null);
+  
+  // Transition hook for handling Server Action loading state
+  const [isPending, startTransition] = useTransition();
+  
   // Live filter state
   const [liveSearchTxt, setLiveSearchTxt] = useState('');
 
@@ -32,6 +38,9 @@ export default function ClientLeadPage({
   const [historyPage, setHistoryPage] = useState(1);
   const [duePage, setDuePage] = useState(1);
   const itemsPerPage = 10;
+
+  // Get today's date in YYYY-MM-DD format for date input min attribute
+  const todayDateStr = new Date().toISOString().split('T')[0];
 
   // Live filtering on frontend for instant response
   const filteredCustomers = allCustomers.filter((c) => {
@@ -57,6 +66,19 @@ export default function ClientLeadPage({
   const handleResetFilter = () => {
     setLiveSearchTxt('');
     setCustomerPage(1);
+  };
+
+  // Handler to wrap form submission, clear form, and refresh router
+  const handleSubmitForm = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    
+    startTransition(async () => {
+      await saveLeadAction(formData);
+      form.reset();
+      router.refresh();
+    });
   };
 
   return (
@@ -112,7 +134,7 @@ export default function ClientLeadPage({
           {/* Lead Entry Form */}
           <div className="bg-white p-6 shadow rounded-lg border">
             <h2 className="text-lg font-semibold mb-3 text-gray-700">Add New Lead / Follow-up</h2>
-            <form action={saveLeadAction} className="space-y-4">
+            <form onSubmit={handleSubmitForm} className="space-y-4">
               <input type="hidden" name="customerId" value={selectedCustomerId} />
 
               <div>
@@ -120,6 +142,7 @@ export default function ClientLeadPage({
                 <input
                   type="date"
                   name="nextFollowupDate"
+                  min={todayDateStr}
                   required
                   className="w-full border rounded p-2 text-sm text-black"
                 />
@@ -138,12 +161,18 @@ export default function ClientLeadPage({
 
               <button
                 type="submit"
-                disabled={!selectedCustomerId}
-                className={`w-full py-2 rounded text-white font-medium ${
-                  selectedCustomerId ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'
+                disabled={!selectedCustomerId || isPending}
+                className={`w-full py-2 rounded text-white font-medium flex items-center justify-center gap-2 ${
+                  selectedCustomerId && !isPending ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-300 cursor-not-allowed'
                 }`}
               >
-                Save Lead Update
+                {isPending && (
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                {isPending ? 'Saving...' : 'Save Lead Update'}
               </button>
             </form>
           </div>
@@ -173,8 +202,21 @@ export default function ClientLeadPage({
                             <div className="font-semibold text-black">{item.customerName}</div>
                             <div className="text-gray-500">{item.phone}</div>
                           </td>
-                          <td className="p-2 text-gray-600 max-w-[120px] truncate" title={item.remarks}>
-                            {item.remarks}
+                          <td className="p-2 text-gray-600">
+                            <div className="flex items-center gap-1.5">
+                              <span className="max-w-[100px] truncate" title={item.remarks}>
+                                {item.remarks}
+                              </span>
+                              {item.remarks && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingRemark(item.remarks)}
+                                  className="text-blue-600 underline text-[10px] font-medium hover:text-blue-800 whitespace-nowrap"
+                                >
+                                  [View]
+                                </button>
+                              )}
+                            </div>
                           </td>
                           <td className="p-2">
                             <button
@@ -219,7 +261,35 @@ export default function ClientLeadPage({
 
       </div>
 
-      {/* POPUP MODAL 1: LIVE SEARCH & SELECT CUSTOMER WITH RESET BUTTON */}
+      {/* POPUP MODAL: VIEW FULL REMARK */}
+      {viewingRemark && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-200">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="text-lg font-bold text-gray-800">💬 Remarks Detail</h3>
+              <button
+                onClick={() => setViewingRemark(null)}
+                className="text-gray-500 hover:text-red-600 font-bold text-xl"
+              >
+                &times;
+              </button>
+            </div>
+            <div className="bg-gray-50 p-4 rounded border text-sm text-gray-800 whitespace-pre-wrap max-h-[250px] overflow-y-auto">
+              {viewingRemark}
+            </div>
+            <div className="flex justify-end pt-2 border-t">
+              <button
+                onClick={() => setViewingRemark(null)}
+                className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POPUP MODAL 1: LIVE SEARCH & SELECT CUSTOMER */}
       {isCustomerModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-xl w-full p-6 space-y-4">
@@ -241,7 +311,7 @@ export default function ClientLeadPage({
                 value={liveSearchTxt}
                 onChange={(e) => {
                   setLiveSearchTxt(e.target.value);
-                  setCustomerPage(1); // Reset page on type
+                  setCustomerPage(1);
                 }}
                 className="w-full border rounded p-2 text-sm text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
@@ -349,7 +419,22 @@ export default function ClientLeadPage({
                       {paginatedHistory.map((h) => (
                         <tr key={h.id} className="border-b">
                           <td className="p-2 text-gray-500 text-xs">{new Date(h.createdAt!).toLocaleDateString()}</td>
-                          <td className="p-2 text-gray-800">{h.remarks}</td>
+                          <td className="p-2 text-gray-800">
+                            <div className="flex items-center gap-1.5">
+                              <span className="max-w-[150px] truncate" title={h.remarks}>
+                                {h.remarks}
+                              </span>
+                              {h.remarks && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewingRemark(h.remarks)}
+                                  className="text-blue-600 underline text-[10px] font-medium hover:text-blue-800 whitespace-nowrap cursor-pointer z-10"
+                                >
+                                  [View]
+                                </button>
+                              )}
+                            </div>
+                          </td>
                           <td className="p-2 font-medium text-blue-600 text-xs">{h.nextFollowupDate}</td>
                           <td className="p-2">
                             <span className="px-2 py-0.5 text-[10px] rounded bg-yellow-100 text-yellow-800">

@@ -119,13 +119,15 @@ export default function InvoicesListPage() {
             ${isPaid ? '<div class="paid-stamp">PAID IN FULL</div>' : ''}
             
             <div class="header-banner">
-              <div class="logo-area">
-                <div class="logo-box">LOGO</div>
-                <div class="company-info">
-                  <h2>Areel Areel REALTY</h2>
-                  <p>Excellence in Real Estate & Transactions</p>
-                </div>
-              </div>
+             <div class="logo-area">
+  <div class="logo flex items-center">
+    <img 
+      src="/images/logos/Chiron Properties Logo without background.png" 
+      alt="Company Logo" 
+      style="height: 35px; width: auto; display: block;" 
+    />
+  </div>
+</div>
               <div style="text-align: right; font-size: 10px;">
                 <strong>Invoice ID:</strong> #${invoice.id}<br/>
                 <strong>Status:</strong> <span style="color: ${isPaid ? '#6ee7b7' : '#93c5fd'}; font-weight: bold;">${invoice.status}</span><br/>

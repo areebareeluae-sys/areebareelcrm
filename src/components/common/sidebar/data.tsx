@@ -1,7 +1,7 @@
 import {
   AlphabetIcon,
   HomeIcon,
-  PieChartIcon,
+  WindowIcon,
   TableIcon,
   UserIcon,
   Widget4Icon,
@@ -27,6 +27,17 @@ export const NAV_DATA = [
           
         ],
       },    
+        {
+        title: "Leads",
+        icon: <WindowIcon />,
+        items: [
+          {
+            title: "Follow up",
+            url: "/leads",
+          },
+          
+        ],
+      }, 
          {
         title: "Customers",
         icon: <UserGroupIcon />,

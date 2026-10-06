@@ -140,12 +140,14 @@ export default function PurchaseOrdersListPage() {
           <div class="invoice-box">
             <div class="header-banner">
               <div class="logo-area">
-                <div class="logo-box">LOGO</div>
-                <div class="company-info">
-                  <h2>areebareel Realty</h2>
-                  <p>Purchase Order & Closed Transaction Summary</p>
-                </div>
-              </div>
+  <div class="logo flex items-center">
+    <img 
+      src="/images/logos/Chiron Properties Logo without background.png" 
+      alt="Company Logo" 
+      style="height: 35px; width: auto; display: block;" 
+    />
+  </div>
+</div>
               <div style="text-align: right; font-size: 10px;">
                 <strong>PO ID:</strong> ${order.Purchaseorderid || 'N/A'}<br/>
                 <strong>Property ID:</strong> #${order.id}<br/>

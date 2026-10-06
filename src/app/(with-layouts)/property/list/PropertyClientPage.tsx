@@ -3,13 +3,34 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import PropertyReferralModal from '@/components/PropertyReferralModal';
+import { FileText, Upload, Download, X, ArrowLeft } from 'lucide-react';
+
+interface DocumentItem {
+  id: string;
+  tableName: string;
+  entityId: string;
+  fileUrl: string;
+  title: string | null;
+  createdAt: string;
+}
 
 export default function AllPropertiesPage({ initialProperties = [] }: { initialProperties: any[] }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20; // 👈 20 properties per page
+  const itemsPerPage = 20;
+
+  // PDF Modals States (Customer style)
+  const [viewPdfProperty, setViewPdfProperty] = useState<any | null>(null);
+  const [propertyDocuments, setPropertyDocuments] = useState<DocumentItem[]>([]);
+  const [fetchingDocs, setFetchingDocs] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+
+  const [uploadPdfProperty, setUploadPdfProperty] = useState<any | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pdfTitle, setPdfTitle] = useState('');
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   // Real-time filtering logic
   const filteredProperties = useMemo(() => {
@@ -44,7 +65,6 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentProperties = filteredProperties.slice(startIndex, startIndex + itemsPerPage);
 
-  // Reset to page 1 when search or country changes
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -54,6 +74,59 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
     setSelectedCountry(e.target.value);
     setCurrentPage(1);
   };
+
+  // Fetch Documents when View PDF modal opens
+  async function handleOpenViewPdf(property: any) {
+    setViewPdfProperty(property);
+    setPreviewPdfUrl(null);
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`/api/documents?tableName=property&entityId=${property.id}`);
+      const result = await res.json();
+      if (result.success) {
+        setPropertyDocuments(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setFetchingDocs(false);
+    }
+  }
+
+  // Handle Upload PDF Submit
+  async function handleUploadPdfSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!uploadPdfProperty || !pdfFile) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('tableName', 'property');
+      formData.append('entityId', uploadPdfProperty.id);
+      formData.append('title', pdfTitle || pdfFile.name);
+      formData.append('file', pdfFile);
+
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert('PDF uploaded successfully!');
+        setUploadPdfProperty(null);
+        setPdfFile(null);
+        setPdfTitle('');
+      } else {
+        alert(result.error || 'Failed to upload PDF');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload PDF');
+    } finally {
+      setUploading(false);
+    }
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -200,8 +273,20 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
                   <div className="text-center"><span className="font-bold text-gray-900 block">{property.Garages ?? 0}</span> Garages</div>
                 </div>
 
-                {/* Right: Referral Action */}
-                <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+                {/* Right: Actions (View PDF + Upload PDF + Referral + Details) */}
+                <div className="flex items-center gap-1.5 w-full md:w-auto justify-end flex-wrap">
+                  <button
+                    onClick={() => handleOpenViewPdf(property)}
+                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+                  >
+                    <FileText className="w-3 h-3" /> View PDF
+                  </button>
+                  <button
+                    onClick={() => setUploadPdfProperty(property)}
+                    className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+                  >
+                    <Upload className="w-3 h-3" /> Upload PDF
+                  </button>
                   <PropertyReferralModal property={property} />
                   <Link 
                     href={`/property/list/${property.id}`}
@@ -297,6 +382,22 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
                       {property.maxprice && property.maxprice !== property.minprice ? ` - ${Number(property.maxprice).toLocaleString()}` : ''}
                     </div>
 
+                    {/* PDF Action Buttons in Grid */}
+                    <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                      <button
+                        onClick={() => handleOpenViewPdf(property)}
+                        className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+                      >
+                        <FileText className="w-3 h-3" /> View PDF
+                      </button>
+                      <button
+                        onClick={() => setUploadPdfProperty(property)}
+                        className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+                      >
+                        <Upload className="w-3 h-3" /> Upload PDF
+                      </button>
+                    </div>
+
                     <div className="flex justify-between items-center pt-2">
                       <PropertyReferralModal property={property} />
                       <Link 
@@ -343,6 +444,166 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
           >
             Next →
           </button>
+        </div>
+      )}
+
+      {/* VIEW PDF MODAL (In-Popup Iframe Viewer) */}
+      {viewPdfProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                {previewPdfUrl && (
+                  <button 
+                    onClick={() => setPreviewPdfUrl(null)} 
+                    className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-700 transition flex items-center gap-1 text-xs font-semibold"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to List
+                  </button>
+                )}
+                <h3 className="text-sm font-bold text-gray-900">
+                  {previewPdfUrl ? 'Viewing PDF Preview' : `Property PDFs: ${viewPdfProperty.title}`}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setViewPdfProperty(null)} 
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-200/60 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {previewPdfUrl ? (
+                <div className="w-full h-[500px] border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                  <iframe
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(previewPdfUrl)}&embedded=true`}
+                    className="w-full h-full border-0"
+                    title="PDF Viewer"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2 text-xs">
+                  {fetchingDocs ? (
+                    <p className="text-center py-10 text-gray-400">PDFs load ho rahe hain...</p>
+                  ) : propertyDocuments.length === 0 ? (
+                    <p className="text-center py-10 text-gray-400">Is property ki koi PDF maujood nahi hai.</p>
+                  ) : (
+                    propertyDocuments.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100/50 transition">
+                        <div>
+                          <p className="font-semibold text-gray-900">{doc.title || 'Document PDF'}</p>
+                          <p className="text-[10px] text-gray-400">{new Date(doc.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPreviewPdfUrl(doc.fileUrl)}
+                            className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-semibold hover:bg-indigo-100 transition"
+                          >
+                            View
+                          </button>
+                          
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(doc.fileUrl);
+                                const blob = await response.blob();
+                                const blobUrl = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = blobUrl;
+                                link.download = `${doc.title || 'document'}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(blobUrl);
+                              } catch (err) {
+                                window.open(doc.fileUrl, '_blank');
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition inline-flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" /> Download
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+              {previewPdfUrl ? (
+                <button
+                  onClick={() => setPreviewPdfUrl(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xs font-semibold transition"
+                >
+                  Back to List
+                </button>
+              ) : <div />}
+              <button
+                onClick={() => setViewPdfProperty(null)}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD PDF MODAL */}
+      {uploadPdfProperty && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md overflow-hidden space-y-4">
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <h3 className="text-sm font-bold text-gray-900">Upload PDF for {uploadPdfProperty.title}</h3>
+              <button onClick={() => setUploadPdfProperty(null)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUploadPdfSubmit} className="px-6 py-3 space-y-4 text-xs">
+              <div>
+                <label className="block font-medium text-gray-700 mb-1">Document Title</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Agreement, Brochure PDF"
+                  value={pdfTitle}
+                  onChange={(e) => setPdfTitle(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 p-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-gray-700 mb-1">Select PDF File</label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                  className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setUploadPdfProperty(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading...' : 'Upload to Cloudinary'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

@@ -51,15 +51,19 @@ export default function Sidebar({
             >
                 <Link href='/'>
                     {isSidebarOpen ? (
-                        <>
-                            {theme === 'light' ? (
-                                <LogoText />
-                            ) : (
-                                <LogoText />
-                            )}
-                        </>
+                  <>
+  <img 
+    src="/images/logos/Chiron Properties Black Logo without background.png" 
+    alt="Logo" 
+    style={{ height: '40px', width: 'auto' }} // Aap yahan apni marzi ki styling/class de sakte hain
+  />
+</>
                     ) : (
-                        <LogoA />
+                          <img 
+    src="/images/logos/Asset_dark-logo.png" 
+    alt="Logo" 
+    style={{ height: '40px', width: 'auto' }} // Aap yahan apni marzi ki styling/class de sakte hain
+  />
                     )}
                 </Link>
 
@@ -130,15 +134,7 @@ export default function Sidebar({
             </nav>
 
             {/* Footer — only visible when expanded */}
-            {isSidebarOpen && (
-                <div className='px-4 py-4'>
-                    <div className='rounded-2xl bg-background-gray-primary px-4 py-5 text-center'>
-                        <p className='mb-2 leading-6 font-semibold text-text-primary'>
-                            CRM AREEBAREEEL
-                        </p>
-                    </div>
-                </div>
-            )}
+            
         </div>
     );
 }

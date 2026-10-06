@@ -1,0 +1,1 @@
+ALTER TABLE `security_guards` ADD `description` text;

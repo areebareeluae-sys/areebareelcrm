@@ -3,6 +3,16 @@
 import React, { useEffect, useState, use } from 'react';
 import { getPropertyDetails } from '../../../../api/property/route';
 import Link from 'next/link';
+import { FileText, Download, X, ArrowLeft } from 'lucide-react';
+
+interface DocumentItem {
+  id: string;
+  tableName: string;
+  entityId: string;
+  fileUrl: string;
+  title: string | null;
+  createdAt: string;
+}
 
 export default function PropertyDetailViewPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -20,6 +30,12 @@ export default function PropertyDetailViewPage({ params }: { params: Promise<{ i
   const [isBuyerModalOpen, setIsBuyerModalOpen] = useState(false);
   const [isBuyerReferralOpen, setIsBuyerReferralOpen] = useState(false);
 
+  // Document Modal States
+  const [isDocModalOpen, setIsDocModalOpen] = useState(false);
+  const [propertyDocuments, setPropertyDocuments] = useState<DocumentItem[]>([]);
+  const [fetchingDocs, setFetchingDocs] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+
   useEffect(() => {
     if (id) {
       getPropertyDetails(id).then((res: any) => {
@@ -36,6 +52,24 @@ export default function PropertyDetailViewPage({ params }: { params: Promise<{ i
       });
     }
   }, [id]);
+
+  // Fetch Documents when Document Modal opens
+  async function handleOpenDocuments() {
+    setIsDocModalOpen(true);
+    setPreviewPdfUrl(null);
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`/api/documents?tableName=property&entityId=${id}`);
+      const result = await res.json();
+      if (result.success) {
+        setPropertyDocuments(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setFetchingDocs(false);
+    }
+  }
 
   if (loading) {
     return <div className="text-center py-20 text-gray-400 font-medium">Loading property details...</div>;
@@ -61,9 +95,19 @@ export default function PropertyDetailViewPage({ params }: { params: Promise<{ i
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
-      <Link href="/property/list" className="text-sm text-blue-600 hover:underline font-medium inline-block">
-        ← Back to Listings
-      </Link>
+      <div className="flex justify-between items-center">
+        <Link href="/property/list" className="text-sm text-blue-600 hover:underline font-medium inline-block">
+          ← Back to Listings
+        </Link>
+        
+        {/* View Documents Button */}
+        <button
+          onClick={handleOpenDocuments}
+          className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition border border-emerald-200"
+        >
+          <FileText className="w-4 h-4" /> View Documents
+        </button>
+      </div>
 
       {/* Header Info (Status & Category Added) */}
       <div className="bg-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -314,6 +358,113 @@ export default function PropertyDetailViewPage({ params }: { params: Promise<{ i
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DOCUMENTS MODAL (With In-Popup Iframe Viewer & Download) */}
+      {isDocModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                {previewPdfUrl && (
+                  <button 
+                    onClick={() => setPreviewPdfUrl(null)} 
+                    className="p-1.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-700 transition flex items-center gap-1 text-xs font-semibold"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Back to List
+                  </button>
+                )}
+                <h3 className="text-sm font-bold text-gray-900">
+                  {previewPdfUrl ? 'Viewing PDF Preview' : `Property Documents: ${property.title}`}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setIsDocModalOpen(false)} 
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-200/60 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              {previewPdfUrl ? (
+                <div className="w-full h-[500px] border border-gray-200 rounded-xl overflow-hidden bg-gray-50">
+                  <iframe
+                    src={`https://docs.google.com/gview?url=${encodeURIComponent(previewPdfUrl)}&embedded=true`}
+                    className="w-full h-full border-0"
+                    title="PDF Viewer"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-2 text-xs">
+                  {fetchingDocs ? (
+                    <p className="text-center py-10 text-gray-400">Documents load ho rahe hain...</p>
+                  ) : propertyDocuments.length === 0 ? (
+                    <p className="text-center py-10 text-gray-400">Is property ki koi document/PDF maujood nahi hai.</p>
+                  ) : (
+                    propertyDocuments.map((doc) => (
+                      <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100/50 transition">
+                        <div>
+                          <p className="font-semibold text-gray-900">{doc.title || 'Document PDF'}</p>
+                          <p className="text-[10px] text-gray-400">{new Date(doc.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setPreviewPdfUrl(doc.fileUrl)}
+                            className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg font-semibold hover:bg-indigo-100 transition"
+                          >
+                            View
+                          </button>
+                          
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(doc.fileUrl);
+                                const blob = await response.blob();
+                                const blobUrl = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = blobUrl;
+                                link.download = `${doc.title || 'document'}.pdf`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                window.URL.revokeObjectURL(blobUrl);
+                              } catch (err) {
+                                window.open(doc.fileUrl, '_blank');
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition inline-flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" /> Download
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+              {previewPdfUrl ? (
+                <button
+                  onClick={() => setPreviewPdfUrl(null)}
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl text-xs font-semibold transition"
+                >
+                  Back to List
+                </button>
+              ) : <div />}
+              <button
+                onClick={() => setIsDocModalOpen(false)}
+                className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

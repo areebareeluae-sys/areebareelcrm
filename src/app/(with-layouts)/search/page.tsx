@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 
+interface DocumentItem {
+  id: string;
+  tableName: string;
+  entityId: string;
+  fileUrl: string;
+  title: string | null;
+  createdAt: string;
+}
+
 export default function HorizontalTablesPage() {
   const [city, setCity] = useState('');
   const [tag, setTag] = useState('');
@@ -15,6 +24,12 @@ export default function HorizontalTablesPage() {
   // Modal State
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [modalTitle, setModalTitle] = useState('');
+  const [modalTableName, setModalTableName] = useState('');
+
+  // PDF Modal States inside View Modal
+  const [itemDocuments, setItemDocuments] = useState<DocumentItem[]>([]);
+  const [fetchingDocs, setFetchingDocs] = useState(false);
+  const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,9 +54,26 @@ export default function HorizontalTablesPage() {
     return () => clearTimeout(timer);
   }, [city, tag, search]);
 
-  const handleView = (item: any, title: string) => {
+  const handleView = async (item: any, title: string, tableName: string) => {
     setSelectedItem(item);
     setModalTitle(title);
+    setModalTableName(tableName);
+    setPreviewPdfUrl(null);
+    setFetchingDocs(true);
+    setItemDocuments([]);
+
+    // Fetch attached documents for this entity
+    try {
+      const res = await fetch(`/api/documents?tableName=${tableName}&entityId=${item.id}`);
+      const result = await res.json();
+      if (result.success) {
+        setItemDocuments(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setFetchingDocs(false);
+    }
   };
 
   return (
@@ -116,7 +148,7 @@ export default function HorizontalTablesPage() {
                         <td style={{ padding: '10px', color: '#4b5563' }}>{c.phone}</td>
                         <td style={{ padding: '10px', color: '#4b5563' }}>{c.city}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <button onClick={() => handleView(c, 'Customer Details')} style={{ background: '#f97316', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                          <button onClick={() => handleView(c, 'Customer Details', 'customers')} style={{ background: '#f97316', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                             View
                           </button>
                         </td>
@@ -153,7 +185,7 @@ export default function HorizontalTablesPage() {
                         <td style={{ padding: '10px', color: '#4b5563' }}>{p.type}</td>
                         <td style={{ padding: '10px', color: '#4b5563' }}>{p.city}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <button onClick={() => handleView(p, 'Property Details')} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                          <button onClick={() => handleView(p, 'Property Details', 'property')} style={{ background: '#2563eb', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                             View
                           </button>
                         </td>
@@ -190,7 +222,7 @@ export default function HorizontalTablesPage() {
                         <td style={{ padding: '10px', color: '#4b5563' }}>{g.buildingName}</td>
                         <td style={{ padding: '10px', color: '#4b5563' }}>{g.contactNumber}</td>
                         <td style={{ padding: '10px', textAlign: 'center' }}>
-                          <button onClick={() => handleView(g, 'Guard Details')} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
+                          <button onClick={() => handleView(g, 'Guard Details', 'security_guards')} style={{ background: '#16a34a', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>
                             View
                           </button>
                         </td>
@@ -205,21 +237,95 @@ export default function HorizontalTablesPage() {
         </div>
       )}
 
-      {/* POPUP MODAL */}
+      {/* POPUP MODAL WITH DATA & PDF VIEW */}
       {selectedItem && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: '#fff', padding: '25px', borderRadius: '10px', width: '550px', maxWidth: '90%', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 15px 0', color: '#1e3a8a' }}>{modalTitle}</h3>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#fff', padding: '25px', borderRadius: '10px', width: '650px', maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             
-            <div style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', color: '#374151' }}>
-              {Object.entries(selectedItem).map(([key, value]) => (
-                <div key={key} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
-                  <strong style={{ textTransform: 'uppercase', fontSize: '11px', color: '#6b7280', width: '40%' }}>{key}</strong>
-                  <span style={{ width: '60%', textAlign: 'right', wordBreak: 'break-all' }}>{String(value || 'N/A')}</span>
-                </div>
-              ))}
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '15px' }}>
+              <h3 style={{ margin: 0, color: '#1e3a8a', fontSize: '18px' }}>{previewPdfUrl ? 'PDF Preview' : modalTitle}</h3>
+              {previewPdfUrl && (
+                <button onClick={() => setPreviewPdfUrl(null)} style={{ background: '#f3f4f6', border: '1px solid #d1d5db', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+                  ← Back to Details
+                </button>
+              )}
             </div>
 
+            {/* Content Switch: PDF Preview or Record Details + PDFs List */}
+            {previewPdfUrl ? (
+              <div style={{ width: '100%', height: '450px', border: '1px solid #e5e7eb', borderRadius: '6px', overflow: 'hidden' }}>
+                <iframe
+                  src={`https://docs.google.com/gview?url=${encodeURIComponent(previewPdfUrl)}&embedded=true`}
+                  style={{ width: '100%', height: '100%', border: '0' }}
+                  title="PDF Preview"
+                />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* Record Fields */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px', color: '#374151' }}>
+                  {Object.entries(selectedItem).map(([key, value]) => (
+                    <div key={key} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                      <strong style={{ textTransform: 'uppercase', fontSize: '11px', color: '#6b7280', width: '40%' }}>{key}</strong>
+                      <span style={{ width: '60%', textAlign: 'right', wordBreak: 'break-all' }}>{String(value || 'N/A')}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Attached Documents / PDFs Section */}
+                <div style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#334155' }}>📄 Attached PDFs / Documents</h4>
+                  
+                  {fetchingDocs ? (
+                    <p style={{ fontSize: '12px', color: '#64748b', margin: 0 }}>Documents load ho rahe hain...</p>
+                  ) : itemDocuments.length === 0 ? (
+                    <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>Is record ke sath koi PDF attach nahi hai.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {itemDocuments.map((doc) => (
+                        <div key={doc.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <div>
+                            <span style={{ fontSize: '13px', fontWeight: '500', color: '#1e293b', display: 'block' }}>{doc.title || 'Document.pdf'}</span>
+                            <span style={{ fontSize: '10px', color: '#94a3b8' }}>{new Date(doc.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => setPreviewPdfUrl(doc.fileUrl)}
+                              style={{ background: '#e0e7ff', color: '#3730a3', border: 'none', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(doc.fileUrl);
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = `${doc.title || 'document'}.pdf`;
+                                  a.click();
+                                } catch (err) {
+                                  window.open(doc.fileUrl, '_blank');
+                                }
+                              }}
+                              style={{ background: '#0f172a', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                              Download
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+
+            {/* Close Button */}
             <button onClick={() => setSelectedItem(null)} style={{ marginTop: '20px', width: '100%', background: '#ef4444', color: '#fff', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
               Close
             </button>

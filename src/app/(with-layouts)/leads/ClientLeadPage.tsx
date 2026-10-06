@@ -183,7 +183,7 @@ export default function ClientLeadPage({
           <div className="bg-white p-4 shadow rounded-lg border sticky top-4">
             <h2 className="text-lg font-semibold mb-3 text-blue-600">📅 Today's Follow-up Calls</h2>
             {dueLeads.length === 0 ? (
-              <p className="text-gray-500 text-sm py-4 text-center">Aaj ke liye koi pending follow-up nahi hai.</p>
+              <p className="text-gray-500 text-sm py-4 text-center">No pending follow-up calls for today.</p>
             ) : (
               <>
                 <div className="overflow-x-auto">

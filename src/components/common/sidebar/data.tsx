@@ -3,7 +3,7 @@ import {
   HomeIcon,
   WindowIcon,
   TableIcon,
-  UserIcon,
+  AuthIcon,
   Widget4Icon,
   TaskIcon,
   UserGroupIcon,
@@ -34,6 +34,21 @@ export const NAV_DATA = [
           {
             title: "Follow up",
             url: "/leads",
+          },
+          
+        ],
+      }, 
+              {
+        title: "Security Guards & Buildings",
+        icon: <AuthIcon />,
+        items: [
+          {
+            title: "Add Security Guards & Buildings",
+            url: "/security-guards",
+          },
+          {
+            title: "Security Guards & Buildings List",
+            url: "/security-guards/list",
           },
           
         ],

@@ -98,9 +98,19 @@ export const securityGuards = sqliteTable('security_guards', {
   buildingName: text('building_name').notNull(),
   securityGuard: text('security_guard').notNull(),
   contactNumber: text('contact_number').notNull(),
+  description: text('description'), // 👈 Naya column add kiya gaya hai
   constructionStatus: text('construction_status').notNull(),
   tags: text('tags').default(''), // Tags column for editing & categorization
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+});
+export const documents = sqliteTable('documents', {
+  id: text('id').primaryKey(),
+  tableName: text('table_name').notNull(), // Yeh batayega ke file kis ki hai: 'customer', 'property', ya 'security_guards'
+  entityId: text('entity_id').notNull(),     // Uss specific record ki ID (Jaise customer.id ya property.id)
+  fileUrl: text('file_url').notNull(),       // Cloudinary ka secure PDF/File URL
+  title: text('title'),                      // Document ka title ya naam (Jaise: "Agreement", "Blueprint")
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  status: text('status').notNull().default('Active'),
 });
 
 

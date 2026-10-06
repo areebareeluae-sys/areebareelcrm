@@ -5,6 +5,7 @@ import { customer, leads } from '@/db/schema';
 import { eq, desc, lte, or, like, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
+import { NextResponse } from 'next/server';
 
 type DueLeadItem = {
   leadId: string;
@@ -112,4 +113,23 @@ export async function saveLead(formData: FormData) {
   });
 
   revalidatePath('/leads');
+}
+export async function GET() {
+  try {
+    const data = await db.select().from(customer);
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    return NextResponse.json({ success: true, data: body });
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+  }
 }

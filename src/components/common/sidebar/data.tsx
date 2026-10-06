@@ -109,28 +109,28 @@ export const NAV_DATA = [
           },
         ],
       },
-      {
-        title: "Reports",
-        icon: <LetterIcon />,
-        items: [
-          {
-            title: "Customer Report",
-            url: "/customerreport",
-          },
-                    {
-            title: "Property Report",
-            url: "/propertyreport",
-          },
-          {
-            title: "Invoice Report",
-            url: "/invoicereport",
-          },
-          {
-            title: "Purchase Order Report",
-            url: "/purchaseorderreport",
-          },
-        ],
-      },
+      // {
+      //   title: "Reports",
+      //   icon: <LetterIcon />,
+      //   items: [
+      //     {
+      //       title: "Customer Report",
+      //       url: "/customerreport",
+      //     },
+      //               {
+      //       title: "Property Report",
+      //       url: "/propertyreport",
+      //     },
+      //     {
+      //       title: "Invoice Report",
+      //       url: "/invoicereport",
+      //     },
+      //     {
+      //       title: "Purchase Order Report",
+      //       url: "/purchaseorderreport",
+      //     },
+      //   ],
+      // },
       {
         title: "Uploads",
         icon: <TableIcon />,

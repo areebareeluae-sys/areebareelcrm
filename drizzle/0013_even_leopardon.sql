@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `leadcustomer_phone_unique` ON `leadcustomer` (`phone`);

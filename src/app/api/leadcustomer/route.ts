@@ -2,16 +2,23 @@
 
 import { db } from '@/db';
 import { leadcustomer } from '@/db/schema';
-import { eq, or, like, and, sql } from 'drizzle-orm';
+import { eq, or, like, and, ne } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+
+// Helper function jo empty ya undefined fields ko safely null ya default value mein convert kare
+const cleanField = (value: FormDataEntryValue | null | string, defaultValue: string | null = null) => {
+  if (!value || typeof value !== 'string' || value.trim() === '') {
+    return defaultValue;
+  }
+  return value.trim();
+};
 
 // 1. Get All Customers (with optional search filter & status filter)
 export async function getCustomers(searchQuery?: string, statusFilter?: string) {
   let conditions = [];
 
-  // Search filter check (Updated to include tags)
   if (searchQuery && searchQuery.trim() !== '') {
     const term = `%${searchQuery}%`;
     conditions.push(
@@ -20,12 +27,11 @@ export async function getCustomers(searchQuery?: string, statusFilter?: string) 
         like(leadcustomer.email, term),
         like(leadcustomer.phone, term),
         like(leadcustomer.city, term),
-        like(leadcustomer.tags, term) // <-- Tags par bhi search chalegi
+        like(leadcustomer.tags, term)
       )
     );
   }
 
-  // Status filter check (e.g. 'Active')
   if (statusFilter && statusFilter.trim() !== '') {
     conditions.push(eq(leadcustomer.status, statusFilter));
   }
@@ -40,20 +46,33 @@ export async function getCustomers(searchQuery?: string, statusFilter?: string) 
 // 2. Add Customer Action
 export async function addCustomer(formData: FormData) {
   const cookieStore = await cookies();
-  const userId = cookieStore.get('userId')?.value || 'admin'; // Cookie se createdby id uthayega
+  const userId = cookieStore.get('userId')?.value || 'admin';
 
   const fullname = formData.get('fullname') as string;
-  const email = formData.get('email') as string;
   const phone = formData.get('phone') as string;
-  const country = formData.get('country') as string;
-  const city = formData.get('city') as string;
-  const address = formData.get('address') as string;
-  const tags = formData.get('tags') as string; // <-- Tags get kiya
+
+  if (!fullname || !phone) {
+    return { success: false, error: 'Full Name and Phone are required.' };
+  }
+
+  // Check if phone number already exists
+  const existingCustomer = await db.select().from(leadcustomer).where(eq(leadcustomer.phone, phone)).limit(1);
   
-  const refname = formData.get('refname') as string;
-  const refnumber = formData.get('refnumber') as string;
-  const refemail = formData.get('refemail') as string;
-  const refaddress = formData.get('refaddress') as string;
+  if (existingCustomer.length > 0) {
+    return { success: false, error: 'Yeh phone number pehle se registered hai!' };
+  }
+
+  // Safe cleaning for all optional fields to prevent NOT NULL constraint crashes
+  const email = cleanField(formData.get('email'));
+  const country = cleanField(formData.get('country'), 'Pakistan');
+  const city = cleanField(formData.get('city'), 'Lahore');
+  const address = cleanField(formData.get('address'), ''); // Agar address khali ho toh empty string jayegi, ya agar column nullable hai toh null rakhein
+  const tags = cleanField(formData.get('tags'));
+  
+  const refname = cleanField(formData.get('refname'));
+  const refnumber = cleanField(formData.get('refnumber'));
+  const refemail = cleanField(formData.get('refemail'));
+  const refaddress = cleanField(formData.get('refaddress'));
 
   try {
     await db.insert(leadcustomer).values({
@@ -64,7 +83,7 @@ export async function addCustomer(formData: FormData) {
       country,
       city,
       address,
-      tags, // <-- DB mein insert kiya
+      tags,
       refname,
       refnumber,
       refemail,
@@ -78,24 +97,40 @@ export async function addCustomer(formData: FormData) {
     return { success: true };
   } catch (error: any) {
     console.error('Add Customer Error:', error);
-    return { success: false, error: 'Failed to add customer.' };
+    return { success: false, error: error.message || 'Failed to add customer.' };
   }
 }
 
 // 3. Update Customer Action
 export async function updateCustomer(id: string, formData: FormData) {
   const fullname = formData.get('fullname') as string;
-  const email = formData.get('email') as string;
   const phone = formData.get('phone') as string;
-  const country = formData.get('country') as string;
-  const city = formData.get('city') as string;
-  const address = formData.get('address') as string;
-  const tags = formData.get('tags') as string; // <-- Tags get kiya
+
+  if (!fullname || !phone) {
+    return { success: false, error: 'Full Name and Phone are required.' };
+  }
+
+  // Check if phone number already exists for another customer
+  const existingCustomerWithPhone = await db
+    .select()
+    .from(leadcustomer)
+    .where(and(eq(leadcustomer.phone, phone), ne(leadcustomer.id, id)))
+    .limit(1);
+
+  if (existingCustomerWithPhone.length > 0) {
+    return { success: false, error: 'Yeh phone number kisi aur lead ke paas pehle se registered hai!' };
+  }
+
+  const email = cleanField(formData.get('email'));
+  const country = cleanField(formData.get('country'), 'Pakistan');
+  const city = cleanField(formData.get('city'), 'Lahore');
+  const address = cleanField(formData.get('address'), '');
+  const tags = cleanField(formData.get('tags'));
   
-  const refname = formData.get('refname') as string;
-  const refnumber = formData.get('refnumber') as string;
-  const refemail = formData.get('refemail') as string;
-  const refaddress = formData.get('refaddress') as string;
+  const refname = cleanField(formData.get('refname'));
+  const refnumber = cleanField(formData.get('refnumber'));
+  const refemail = cleanField(formData.get('refemail'));
+  const refaddress = cleanField(formData.get('refaddress'));
 
   try {
     await db.update(leadcustomer)
@@ -106,7 +141,7 @@ export async function updateCustomer(id: string, formData: FormData) {
         country,
         city,
         address,
-        tags, // <-- DB mein update kiya
+        tags,
         refname,
         refnumber,
         refemail,
@@ -118,7 +153,7 @@ export async function updateCustomer(id: string, formData: FormData) {
     return { success: true };
   } catch (error: any) {
     console.error('Update Customer Error:', error);
-    return { success: false, error: 'Failed to update customer.' };
+    return { success: false, error: error.message || 'Failed to update customer.' };
   }
 }
 

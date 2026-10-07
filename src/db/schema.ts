@@ -29,22 +29,24 @@ export const customer = sqliteTable('customer',{
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'), 
 });
-export const leadcustomer = sqliteTable('leadcustomer',{
-  refname : text('refname').notNull(),
-  refnumber : text('refnumber').notNull(),
-  refemail : text('refemail').notNull(),
-  refaddress : text('refaddress').notNull(),
+export const leadcustomer = sqliteTable('leadcustomer', {
   id: text('id').primaryKey(),
-  fullname : text('fullname').notNull(),
-  email : text('email').notNull(),
-  phone : text('phone').notNull(),
-  country : text('country').notNull(),
-  city : text('city').notNull(),
-  address : text('address').notNull(),
-  tags: text('tags').notNull(),
-  createdby : text('createdby').notNull(),
+  fullname: text('fullname').notNull(),
+  phone: text('phone').notNull().unique(),
+  email: text('email'),
+  country: text('country'),
+  city: text('city'),
+  address: text('address'),
+  tags: text('tags'),
+  
+  refname: text('refname'),
+  refnumber: text('refnumber'),
+  refemail: text('refemail'),
+  refaddress: text('refaddress'),
+  
+  createdby: text('createdby').notNull(),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
-  status: text('status').notNull().default('Active'), 
+  status: text('status').notNull().default('Active'),
 });
 export const leads = sqliteTable('leads', {
   id: text('id').primaryKey(),

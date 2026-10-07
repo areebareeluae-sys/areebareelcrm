@@ -191,7 +191,7 @@ export default function CustomersPage() {
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Country</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Country.</label>
                     <select name="country" value={formData.country} onChange={handleCountryChange} className="w-full border rounded-lg px-2 py-2 text-black focus:ring-2 focus:ring-blue-500 outline-none">
                       <option value="Pakistan">Pakistan</option>
                       <option value="UAE">UAE</option>

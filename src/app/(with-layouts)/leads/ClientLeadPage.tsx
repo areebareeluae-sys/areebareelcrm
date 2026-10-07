@@ -9,7 +9,6 @@ export default function ClientLeadPage({
   selectedCustomerId,
   selectedCustomer,
   history,
-  searchQuery,
   saveLeadAction,
 }: {
   allCustomers: any[];
@@ -23,14 +22,8 @@ export default function ClientLeadPage({
   const router = useRouter();
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  
-  // State for viewing full remarks in a popup modal
   const [viewingRemark, setViewingRemark] = useState<string | null>(null);
-  
-  // Transition hook for handling Server Action loading state
   const [isPending, startTransition] = useTransition();
-  
-  // Live filter state
   const [liveSearchTxt, setLiveSearchTxt] = useState('');
 
   // Pagination States
@@ -39,10 +32,8 @@ export default function ClientLeadPage({
   const [duePage, setDuePage] = useState(1);
   const itemsPerPage = 10;
 
-  // Get today's date in YYYY-MM-DD format for date input min attribute
   const todayDateStr = new Date().toISOString().split('T')[0];
 
-  // Live filtering on frontend for instant response
   const filteredCustomers = allCustomers.filter((c) => {
     const q = liveSearchTxt.toLowerCase();
     return (
@@ -52,7 +43,6 @@ export default function ClientLeadPage({
     );
   });
 
-  // Pagination Slicing Helpers
   const paginatedCustomers = filteredCustomers.slice((customerPage - 1) * itemsPerPage, customerPage * itemsPerPage);
   const totalCustomerPages = Math.ceil(filteredCustomers.length / itemsPerPage);
 
@@ -62,13 +52,11 @@ export default function ClientLeadPage({
   const paginatedDueLeads = dueLeads.slice((duePage - 1) * itemsPerPage, duePage * itemsPerPage);
   const totalDuePages = Math.ceil(dueLeads.length / itemsPerPage);
 
-  // Reset filter function
   const handleResetFilter = () => {
     setLiveSearchTxt('');
     setCustomerPage(1);
   };
 
-  // Handler to wrap form submission, clear form, and refresh router
   const handleSubmitForm = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -86,13 +74,13 @@ export default function ClientLeadPage({
       <h1 className="text-2xl font-bold text-gray-800">Lead Management & Follow-ups</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* LEFT SECTION: Selected Customer Info & Lead Form (7 Cols) */}
+        {/* LEFT SECTION */}
         <div className="lg:col-span-7 space-y-6">
           <div className="bg-white p-6 shadow rounded-lg border space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-gray-700">Customer Details</h2>
               <button
+                type="button"
                 onClick={() => {
                   setLiveSearchTxt('');
                   setCustomerPage(1);
@@ -114,6 +102,7 @@ export default function ClientLeadPage({
                     <p><strong>City/Country:</strong> {selectedCustomer.city}, {selectedCustomer.country}</p>
                   </div>
                   <button
+                    type="button"
                     onClick={() => {
                       setHistoryPage(1);
                       setIsHistoryOpen(true);
@@ -126,7 +115,7 @@ export default function ClientLeadPage({
               </div>
             ) : (
               <div className="p-6 bg-gray-50 border border-dashed rounded text-center text-gray-500 text-sm">
-                No customer selected. Click "Select / Search Customer" to choose a customer and view their details.
+                No customer selected. Click &quot;Select / Search Customer&quot; to choose a customer and view their details.
               </div>
             )}
           </div>
@@ -178,10 +167,10 @@ export default function ClientLeadPage({
           </div>
         </div>
 
-        {/* RIGHT SECTION: Today's Follow-up Calls / Due Leads with Pagination (5 Cols) */}
+        {/* RIGHT SECTION: Today's Follow-up Calls */}
         <div className="lg:col-span-5">
           <div className="bg-white p-4 shadow rounded-lg border sticky top-4">
-            <h2 className="text-lg font-semibold mb-3 text-blue-600">📅 Today's Follow-up Calls</h2>
+            <h2 className="text-lg font-semibold mb-3 text-blue-600">📅 Today&apos;s Follow-up Calls</h2>
             {dueLeads.length === 0 ? (
               <p className="text-gray-500 text-sm py-4 text-center">No pending follow-up calls for today.</p>
             ) : (
@@ -220,6 +209,7 @@ export default function ClientLeadPage({
                           </td>
                           <td className="p-2">
                             <button
+                              type="button"
                               onClick={() => router.push(`/leads?customerId=${item.customerId}`)}
                               className="bg-blue-600 text-white px-2 py-1 rounded text-[11px] hover:bg-blue-700 whitespace-nowrap"
                             >
@@ -232,12 +222,12 @@ export default function ClientLeadPage({
                   </table>
                 </div>
 
-                {/* Due Leads Pagination Controls */}
                 {totalDuePages > 1 && (
                   <div className="flex justify-between items-center mt-3 pt-2 border-t text-xs">
                     <span>Page {duePage} of {totalDuePages}</span>
                     <div className="space-x-1">
                       <button
+                        type="button"
                         onClick={() => setDuePage((p) => Math.max(p - 1, 1))}
                         disabled={duePage === 1}
                         className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -245,6 +235,7 @@ export default function ClientLeadPage({
                         Prev
                       </button>
                       <button
+                        type="button"
                         onClick={() => setDuePage((p) => Math.min(p + 1, totalDuePages))}
                         disabled={duePage === totalDuePages}
                         className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -258,16 +249,16 @@ export default function ClientLeadPage({
             )}
           </div>
         </div>
-
       </div>
 
-      {/* POPUP MODAL: VIEW FULL REMARK */}
+      {/* MODAL: VIEW REMARK */}
       {viewingRemark && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[70] p-4">
           <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 space-y-4 border border-gray-200">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-lg font-bold text-gray-800">💬 Remarks Detail</h3>
               <button
+                type="button"
                 onClick={() => setViewingRemark(null)}
                 className="text-gray-500 hover:text-red-600 font-bold text-xl"
               >
@@ -279,6 +270,7 @@ export default function ClientLeadPage({
             </div>
             <div className="flex justify-end pt-2 border-t">
               <button
+                type="button"
                 onClick={() => setViewingRemark(null)}
                 className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 font-medium"
               >
@@ -289,13 +281,14 @@ export default function ClientLeadPage({
         </div>
       )}
 
-      {/* POPUP MODAL 1: LIVE SEARCH & SELECT CUSTOMER */}
+      {/* MODAL: SELECT CUSTOMER */}
       {isCustomerModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-xl w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
               <h3 className="text-lg font-bold text-gray-800">Select Customer</h3>
               <button
+                type="button"
                 onClick={() => setIsCustomerModalOpen(false)}
                 className="text-gray-500 hover:text-red-600 font-bold text-lg"
               >
@@ -303,7 +296,6 @@ export default function ClientLeadPage({
               </button>
             </div>
 
-            {/* Live Search Input & Reset Button */}
             <div className="flex gap-2">
               <input
                 type="text"
@@ -350,12 +342,12 @@ export default function ClientLeadPage({
               )}
             </div>
 
-            {/* Customer Selection Pagination */}
             {totalCustomerPages > 1 && (
               <div className="flex justify-between items-center text-xs pt-1">
                 <span>Page {customerPage} of {totalCustomerPages}</span>
                 <div className="space-x-1">
                   <button
+                    type="button"
                     onClick={() => setCustomerPage((p) => Math.max(p - 1, 1))}
                     disabled={customerPage === 1}
                     className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -363,6 +355,7 @@ export default function ClientLeadPage({
                     Prev
                   </button>
                   <button
+                    type="button"
                     onClick={() => setCustomerPage((p) => Math.min(p + 1, totalCustomerPages))}
                     disabled={customerPage === totalCustomerPages}
                     className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -375,6 +368,7 @@ export default function ClientLeadPage({
 
             <div className="flex justify-end pt-2 border-t">
               <button
+                type="button"
                 onClick={() => setIsCustomerModalOpen(false)}
                 className="bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700"
               >
@@ -385,7 +379,7 @@ export default function ClientLeadPage({
         </div>
       )}
 
-      {/* POPUP MODAL 2: CUSTOMER HISTORY */}
+      {/* MODAL: CUSTOMER HISTORY */}
       {isHistoryOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 space-y-4">
@@ -394,6 +388,7 @@ export default function ClientLeadPage({
                 📜 History: {selectedCustomer?.fullname}
               </h3>
               <button
+                type="button"
                 onClick={() => setIsHistoryOpen(false)}
                 className="text-gray-500 hover:text-red-600 font-bold text-lg"
               >
@@ -446,12 +441,12 @@ export default function ClientLeadPage({
                     </tbody>
                   </table>
 
-                  {/* History Pagination Controls */}
                   {totalHistoryPages > 1 && (
                     <div className="flex justify-between items-center mt-3 pt-2 border-t text-xs">
                       <span>Page {historyPage} of {totalHistoryPages}</span>
                       <div className="space-x-1">
                         <button
+                          type="button"
                           onClick={() => setHistoryPage((p) => Math.max(p - 1, 1))}
                           disabled={historyPage === 1}
                           className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -459,6 +454,7 @@ export default function ClientLeadPage({
                           Prev
                         </button>
                         <button
+                          type="button"
                           onClick={() => setHistoryPage((p) => Math.min(p + 1, totalHistoryPages))}
                           disabled={historyPage === totalHistoryPages}
                           className="px-2 py-1 bg-gray-200 rounded disabled:opacity-50"
@@ -474,6 +470,7 @@ export default function ClientLeadPage({
 
             <div className="flex justify-end pt-2 border-t">
               <button
+                type="button"
                 onClick={() => setIsHistoryOpen(false)}
                 className="bg-gray-600 text-white px-4 py-2 rounded text-sm hover:bg-gray-700"
               >

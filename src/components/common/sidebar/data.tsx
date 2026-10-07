@@ -32,6 +32,15 @@ export const NAV_DATA = [
         icon: <WindowIcon />,
         items: [
           {
+            title: "Add Leads",
+            url: "/leadcustomer/add-customer",
+          },
+           {
+            title: "List Leads",
+            url: "/leadcustomer/list",
+          },
+          {
+
             title: "Follow up",
             url: "/leads",
           },

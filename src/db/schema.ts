@@ -29,9 +29,26 @@ export const customer = sqliteTable('customer',{
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'), 
 });
+export const leadcustomer = sqliteTable('leadcustomer',{
+  refname : text('refname').notNull(),
+  refnumber : text('refnumber').notNull(),
+  refemail : text('refemail').notNull(),
+  refaddress : text('refaddress').notNull(),
+  id: text('id').primaryKey(),
+  fullname : text('fullname').notNull(),
+  email : text('email').notNull(),
+  phone : text('phone').notNull(),
+  country : text('country').notNull(),
+  city : text('city').notNull(),
+  address : text('address').notNull(),
+  tags: text('tags').notNull(),
+  createdby : text('createdby').notNull(),
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  status: text('status').notNull().default('Active'), 
+});
 export const leads = sqliteTable('leads', {
   id: text('id').primaryKey(),
-  customerId: text('customer_id').notNull().references(() => customer.id),
+  customerId: text('customer_id').notNull().references(() => leadcustomer.id),
   remarks: text('remarks').notNull(),
   nextFollowupDate: text('next_followup_date').notNull(), // Format: YYYY-MM-DD
   status: text('status').notNull().default('Pending'), // Pending, Completed, Cancelled

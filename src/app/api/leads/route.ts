@@ -1,8 +1,8 @@
 'use server';
 
 import { db } from '@/db';
-import { customer, leads } from '@/db/schema';
-import { eq, desc, lte, or, like, sql } from 'drizzle-orm';
+import { leadcustomer, leads } from '@/db/schema';
+import { eq, desc, or, like, lte, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
@@ -13,69 +13,60 @@ type DueLeadItem = {
   customerName: string;
   phone: string;
   remarks: string | null;
-  nextFollowupDate: string;
+  nextFollowupDate: string | null;
   status: string | null;
 };
 
+// Get local date string YYYY-MM-DD safely
 function getTodayDate() {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export async function getDashboardData(searchQuery?: string) {
   const today = getTodayDate();
 
-  let customersQuery = db.select().from(customer);
+  let customersQuery = db.select().from(leadcustomer);
+  
   if (searchQuery && searchQuery.trim() !== '') {
     const q = `%${searchQuery.trim()}%`;
     customersQuery = customersQuery.where(
       or(
-        like(customer.fullname, q),
-        like(customer.phone, q),
-        like(customer.id, q)
+        like(leadcustomer.fullname, q),
+        like(leadcustomer.phone, q),
+        like(leadcustomer.id, q)
       )
-    ) as any;
+    ) as typeof customersQuery;
   }
 
   const allCustomers = await customersQuery.all();
 
-  // 1. Updated Subquery: created_at ke time ke hisaab se sab se latest lead ki ID nikalna
-  const latestLeadsSubquery = db
+  // Optimized single-pass subquery for latest leads due today or earlier
+  const dueLeads = await db
     .select({
-      id: sql<string>`(
-        SELECT id FROM leads 
-        WHERE customer_id = ${leads.customerId} 
-        ORDER BY created_at DESC 
-        LIMIT 1
-      )`.as('latest_lead_id'),
+      leadId: leads.id,
+      customerId: leadcustomer.id,
+      customerName: leadcustomer.fullname,
+      phone: leadcustomer.phone,
+      remarks: leads.remarks,
+      nextFollowupDate: leads.nextFollowupDate,
+      status: leads.status,
     })
     .from(leads)
-    .groupBy(leads.customerId);
-
-  const latestLeadIdsResult = await latestLeadsSubquery.all();
-  const latestLeadIds = latestLeadIdsResult.map((row) => row.id);
-
-  let dueLeads: DueLeadItem[] = [];
-
-  if (latestLeadIds.length > 0) {
-    // 2. Fetch only the latest leads whose nextFollowupDate is today or earlier
-    dueLeads = await db
-      .select({
-        leadId: leads.id,
-        customerId: customer.id,
-        customerName: customer.fullname,
-        phone: customer.phone,
-        remarks: leads.remarks,
-        nextFollowupDate: leads.nextFollowupDate,
-        status: leads.status,
-      })
-      .from(leads)
-      .innerJoin(customer, eq(leads.customerId, customer.id))
-      .where(
-        sql`${leads.id} IN (${sql.join(latestLeadIds, sql`, `)}) AND ${lte(leads.nextFollowupDate, today)}`
-      )
-      .orderBy(desc(leads.createdAt))
-      .all();
-  }
+    .innerJoin(leadcustomer, eq(leads.customerId, leadcustomer.id))
+    .where(
+      sql`${leads.id} IN (
+        SELECT id FROM leads l2 
+        WHERE l2.customer_id = ${leads.customerId} 
+        ORDER BY l2.created_at DESC 
+        LIMIT 1
+      ) AND ${lte(leads.nextFollowupDate, today)}`
+    )
+    .orderBy(desc(leads.createdAt))
+    .all();
 
   return { allCustomers, dueLeads };
 }
@@ -83,14 +74,12 @@ export async function getDashboardData(searchQuery?: string) {
 export async function getCustomerHistory(customerId: string) {
   if (!customerId) return [];
   
-  const history = await db
+  return await db
     .select()
     .from(leads)
     .where(eq(leads.customerId, customerId))
     .orderBy(desc(leads.createdAt))
     .all();
-
-  return history;
 }
 
 export async function saveLead(formData: FormData) {
@@ -110,26 +99,8 @@ export async function saveLead(formData: FormData) {
     nextFollowupDate,
     status,
     createdBy: 'Admin',
+    createdAt: new Date().toISOString(),
   });
 
   revalidatePath('/leads');
-}
-export async function GET() {
-  try {
-    const data = await db.select().from(customer);
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    return NextResponse.json({ success: true, data: body });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
-  }
 }

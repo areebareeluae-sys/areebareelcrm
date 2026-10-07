@@ -71,6 +71,20 @@
       "when": 1791288650537,
       "tag": "0009_petite_nico_minoru",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1791366226342,
+      "tag": "0010_majestic_starbolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1791367678766,
+      "tag": "0011_easy_darkstar",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import Providers from "@/app/providers";
+import NetworkGuard from "@/components/NetworkGuard";
 import { cn } from "@/utils/cn";
 import type { Metadata } from "next";
 import { ThemeProvider } from "next-themes";
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
   },
   description: "Areeb Areel CRM.",
   icons: {
-    icon: "/logo.png", // Yahan /images/ hata kar sirf /logo.png kar dein
+    icon: "/logo.png",
   },
 };
 
@@ -34,6 +35,7 @@ export default function RootLayout({
       className={cn("h-full overflow-hidden antialiased", geistInter.className)}
     >
       <body className="h-full overflow-hidden bg-background-gray-secondary_alt_2">
+        <NetworkGuard />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Users, Box, MoreVertical, TrendingUp, TrendingDown, DollarSign, CheckCircle, Clock, ShieldCheck } from 'lucide-react';
 
 interface DashboardData {
@@ -61,9 +62,12 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
             
             {/* Customers Card */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <Link 
+              href="/customers/list"
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:border-indigo-200 transition-all cursor-pointer group"
+            >
               <div className="flex items-center justify-between">
-                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600">
+                <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 group-hover:bg-indigo-100 transition-colors">
                   <Users className="w-6 h-6" />
                 </div>
                 <div className="text-right text-xs text-gray-400">
@@ -71,7 +75,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-sm font-medium text-gray-500">Total Customers</p>
+                <p className="text-sm font-medium text-gray-500 group-hover:text-indigo-600 transition-colors">Total Customers →</p>
                 <div className="flex items-baseline justify-between mt-1">
                   <h3 className="text-3xl font-bold text-gray-900">
                     {data?.customersCount?.toLocaleString() || '0'}
@@ -81,12 +85,15 @@ export default function DashboardPage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </Link>
 
             {/* Properties / Orders Card */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+            <Link 
+              href="/property/list"
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:border-blue-200 transition-all cursor-pointer group"
+            >
               <div className="flex items-center justify-between">
-                <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                <div className="p-3 bg-blue-50 rounded-xl text-blue-600 group-hover:bg-blue-100 transition-colors">
                   <Box className="w-6 h-6" />
                 </div>
                 <div className="text-xs text-gray-400 space-x-2">
@@ -98,7 +105,7 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div className="mt-4">
-                <p className="text-sm font-medium text-gray-500">Total Properties</p>
+                <p className="text-sm font-medium text-gray-500 group-hover:text-blue-600 transition-colors">Total Properties →</p>
                 <div className="flex items-baseline justify-between mt-1">
                   <h3 className="text-3xl font-bold text-gray-900">
                     {data?.propertiesCount?.toLocaleString() || '0'}
@@ -108,11 +115,11 @@ export default function DashboardPage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </Link>
 
           </div>
 
-          {/* Right Column: Monthly Earnings Card (Replaced Monthly Target) */}
+          {/* Right Column: Monthly Earnings Card */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-4">

@@ -46,12 +46,12 @@ export default function UserRow({ user, updateUser, deleteUser }: { user: any, u
               className="border p-1.5 rounded text-sm bg-white" 
               required 
             />
-            <input 
-              type="email" 
-              value={user.email} 
-              disabled 
-              className="border p-1.5 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed" 
-            />
+  <input 
+  type="email" 
+  value={user.email?.toLowerCase()} 
+  disabled 
+  className="border p-1.5 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed lowercase" 
+/>
             <input 
               name="phone" 
               defaultValue={user.phone} 

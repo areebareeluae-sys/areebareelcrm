@@ -37,9 +37,11 @@ export default function LoginPage() {
       <div className="relative z-10 bg-white/15 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/20 w-full max-w-md space-y-6 transition-all duration-500 hover:shadow-indigo-500/10">
         
         <div className="text-center space-y-1">
-          <h1 className="text-3xl font-black text-white tracking-tight">Admin Portal</h1>
-          <p className="text-xs text-slate-300 font-medium">Enter your credentials to access the dashboard</p>
-        </div>
+          <h1 className="text-3xl font-black text-white tracking-tight">
+            <img src="/images/logos/Chiron Properties Logo without background.png" alt="AreebAreelCRM Logo" className="mx-auto mb-2" />
+
+          </h1>       
+          </div>
 
         {/* Error message alert */}
         {errorMsg && (
@@ -51,13 +53,17 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Email / Username</label>
-            <input 
-              name="email" 
-              type="text" 
-              placeholder="admin@example.com" 
-              required 
-              className="w-full bg-slate-900/50 border border-white/15 text-white placeholder-slate-400 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition" 
-            />
+<input 
+  name="email" 
+  type="text" 
+  placeholder="admin@example.com" 
+  required 
+  autoCapitalize="none"
+  className="w-full bg-slate-900/50 border border-white/15 text-white placeholder-slate-400 p-3 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none transition lowercase"
+  onInput={(e) => {
+    e.currentTarget.value = e.currentTarget.value.toLowerCase();
+  }}
+/>
           </div>
 
           <div>
@@ -76,12 +82,12 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 text-white p-3 rounded-xl font-bold text-sm tracking-wide shadow-lg shadow-indigo-600/30 hover:from-indigo-500 hover:to-blue-500 active:scale-[0.98] transition-all duration-200 disabled:opacity-50"
           >
-            {loading ? 'Authenticating...' : 'Sign In'}
+            {loading ? 'Authenticating...' : 'Log In'}
           </button>
         </form>
 
         <div className="text-center text-[11px] text-slate-400 font-medium pt-2 border-t border-white/10">
-          Areeb Areel CRM Admin Portal &copy; {new Date().getFullYear()}
+          Areeb Areel CRM  &copy; {new Date().getFullYear()}
         </div>
       </div>
     </div>

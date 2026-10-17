@@ -99,7 +99,8 @@ const [tags, setTags] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
    const [isModalOpen1, setIsModalOpen1] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-
+const [modalSearch, setModalSearch] = useState('');
+const [modalPage, setModalPage] = useState(1);
   // Pagination (20 per page)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -670,13 +671,13 @@ const [tags, setTags] = useState<string[]>([]);
       {/* Property Listings Table */}
       
 
-   {isModalOpen1 && (
+{isModalOpen1 && (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
       
       {/* Modal Header */}
       <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-        <h3 className="font-semibold text-gray-800 text-lg">Select Seller Customer</h3>
+        <h3 className="font-semibold text-gray-800 text-lg">Select Seller Customer / Properties</h3>
         <button
           type="button"
           onClick={() => setIsModalOpen1(false)}
@@ -686,7 +687,7 @@ const [tags, setTags] = useState<string[]>([]);
         </button>
       </div>
 
-      {/* Modal Body / Table Content */}
+      {/* Modal Body */}
       <div className="overflow-y-auto p-4 flex-1">
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
           
@@ -698,35 +699,28 @@ const [tags, setTags] = useState<string[]>([]);
               </span>
             </div>
 
-            {/* Search Bar */}
-            <form onSubmit={handleSearchSubmit} className="flex gap-2 w-full md:w-auto">
+            {/* Live Search Input (Alag state ke sath) */}
+            <div className="w-full md:w-auto flex gap-2">
               <input
                 type="text"
                 placeholder="Search title, city, category..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-64"
+                value={modalSearch}
+                onChange={(e) => {
+                  setModalSearch(e.target.value);
+                  setModalPage(1); // Jab search karein to page 1 par wapas aa jaye
+                }}
+                className="border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 w-full md:w-72"
               />
-              <button
-                type="submit"
-                disabled={isPending}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
-              >
-                {isPending ? 'Searching...' : 'Search'}
-              </button>
-              {searchTerm && (
+              {modalSearch && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setSearchTerm('');
-                    router.push('/property');
-                  }}
+                  onClick={() => setModalSearch('')}
                   className="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm hover:bg-gray-200 transition"
                 >
-                  Reset
+                  Clear
                 </button>
               )}
-            </form>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -742,14 +736,35 @@ const [tags, setTags] = useState<string[]>([]);
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {paginatedProperties.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-6 text-center text-gray-400">
-                      No properties found.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedProperties.map((prop) => (
+                {(() => {
+                  // 1. Search Filtering
+                  const filtered = properties.filter((prop) => {
+                    const term = modalSearch.toLowerCase();
+                    return (
+                      prop.title?.toLowerCase().includes(term) ||
+                      prop.city?.toLowerCase().includes(term) ||
+                      prop.category?.toLowerCase().includes(term) ||
+                      prop.type?.toLowerCase().includes(term)
+                    );
+                  });
+
+                  // 2. Pagination Logic (10 items per page)
+                  const itemsPerPage = 10;
+                  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+                  const startIndex = (modalPage - 1) * itemsPerPage;
+                  const currentData = filtered.slice(startIndex, startIndex + itemsPerPage);
+
+                  if (currentData.length === 0) {
+                    return (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-gray-400">
+                          No properties found.
+                        </td>
+                      </tr>
+                    );
+                  }
+
+                  return currentData.map((prop) => (
                     <tr key={prop.id} className="hover:bg-gray-50 transition">
                       <td className="p-4 font-medium text-gray-800">{prop.title}</td>
                       <td className="p-4 text-gray-600">{prop.category} ({prop.type})</td>
@@ -765,30 +780,81 @@ const [tags, setTags] = useState<string[]>([]);
                       <td className="p-4 text-right space-x-2">
                         <button
                           type="button"
-                          onClick={() =>{
-                             handleEdit(prop);
+                          onClick={() => {
+                            handleEdit(prop);
                             setIsModalOpen1(false);
                           }}
-                            className="text-blue-600 hover:text-blue-800 font-medium text-xs px-2.5 py-1 bg-blue-50 rounded-lg transition"
+                          className="text-blue-600 hover:text-blue-800 font-medium text-xs px-2.5 py-1 bg-blue-50 rounded-lg transition"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            handleDelete(prop.id);
-                          }}
+                          onClick={() => handleDelete(prop.id)}
                           className="text-red-600 hover:text-red-800 font-medium text-xs px-2.5 py-1 bg-red-50 rounded-lg transition"
                         >
                           Delete
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
+
+          {/* Modal Pagination Footer */}
+          {(() => {
+            const filteredCount = properties.filter((prop) => {
+              const term = modalSearch.toLowerCase();
+              return (
+                prop.title?.toLowerCase().includes(term) ||
+                prop.city?.toLowerCase().includes(term) ||
+                prop.category?.toLowerCase().includes(term)
+              );
+            }).length;
+            const totalPages = Math.ceil(filteredCount / 10);
+
+            if (totalPages <= 1) return null;
+
+            return (
+              <div className="p-4 border-t flex items-center justify-between bg-gray-50/50">
+                <span className="text-xs text-gray-500">
+                  Page {modalPage} of {totalPages}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setModalPage((p) => Math.max(p - 1, 1))}
+                    disabled={modalPage === 1}
+                    className="px-3 py-1.5 border rounded-lg text-xs font-medium bg-white disabled:opacity-50 hover:bg-gray-100 transition"
+                  >
+                    Previous
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setModalPage(page)}
+                      className={`px-3 py-1.5 border rounded-lg text-xs font-medium transition ${
+                        modalPage === page ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setModalPage((p) => Math.min(p + 1, totalPages))}
+                    disabled={modalPage === totalPages}
+                    className="px-3 py-1.5 border rounded-lg text-xs font-medium bg-white disabled:opacity-50 hover:bg-gray-100 transition"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
 
         </div>
       </div>

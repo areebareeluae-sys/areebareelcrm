@@ -143,7 +143,7 @@ export default function ClientLeadPage({
                   name="remarks"
                   rows={3}
                   required
-                  placeholder="Yahan call ki details likhein..."
+                  placeholder="Enter remarks or call notes..."
                   className="w-full border rounded p-2 text-sm text-black"
                 ></textarea>
               </div>
@@ -179,8 +179,8 @@ export default function ClientLeadPage({
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-gray-100 border-b text-xs">
+                       <th className="p-2">Follow-up Date</th>
                         <th className="p-2">Customer</th>
-                        <th className="p-2">Remarks</th>
                         <th className="p-2">Action</th>
                       </tr>
                     </thead>
@@ -188,24 +188,11 @@ export default function ClientLeadPage({
                       {paginatedDueLeads.map((item) => (
                         <tr key={item.leadId} className="border-b text-xs hover:bg-gray-50">
                           <td className="p-2">
+                            <div className="font-semibold text-black">{item.nextFollowupDate}</div>
+                          </td>
+                          <td className="p-2">
                             <div className="font-semibold text-black">{item.customerName}</div>
                             <div className="text-gray-500">{item.phone}</div>
-                          </td>
-                          <td className="p-2 text-gray-600">
-                            <div className="flex items-center gap-1.5">
-                              <span className="max-w-[100px] truncate" title={item.remarks}>
-                                {item.remarks}
-                              </span>
-                              {item.remarks && (
-                                <button
-                                  type="button"
-                                  onClick={() => setViewingRemark(item.remarks)}
-                                  className="text-blue-600 underline text-[10px] font-medium hover:text-blue-800 whitespace-nowrap"
-                                >
-                                  [View]
-                                </button>
-                              )}
-                            </div>
                           </td>
                           <td className="p-2">
                             <button
@@ -406,7 +393,6 @@ export default function ClientLeadPage({
                       <tr className="bg-gray-100 border-b">
                         <th className="p-2">Date</th>
                         <th className="p-2">Remarks</th>
-                        <th className="p-2">Next Follow-up</th>
                         <th className="p-2">Status</th>
                       </tr>
                     </thead>
@@ -430,8 +416,7 @@ export default function ClientLeadPage({
                               )}
                             </div>
                           </td>
-                          <td className="p-2 font-medium text-blue-600 text-xs">{h.nextFollowupDate}</td>
-                          <td className="p-2">
+                                                    <td className="p-2">
                             <span className="px-2 py-0.5 text-[10px] rounded bg-yellow-100 text-yellow-800">
                               {h.status}
                             </span>

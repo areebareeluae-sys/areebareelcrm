@@ -1,12 +1,11 @@
 'use server';
 
 import { db } from '@/db';
-import { leadcustomer, leads } from '@/db/schema';
-import { eq, desc, or, like, lte, sql } from 'drizzle-orm';
+import { leadcustomer ,leads } from '@/db/schema';
+import { eq, desc, or, like, lte } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
-
+import { randomUUID } from 'crypto';
 type DueLeadItem = {
   leadId: string;
   customerId: string;
@@ -44,29 +43,24 @@ export async function getDashboardData(searchQuery?: string) {
 
   const allCustomers = await customersQuery.all();
 
-  // Optimized single-pass subquery for latest leads due today or earlier
-  const dueLeads = await db
-    .select({
-      leadId: leads.id,
-      customerId: leadcustomer.id,
-      customerName: leadcustomer.fullname,
-      phone: leadcustomer.phone,
-      remarks: leads.remarks,
-      nextFollowupDate: leads.nextFollowupDate,
-      status: leads.status,
-    })
-    .from(leads)
-    .innerJoin(leadcustomer, eq(leads.customerId, leadcustomer.id))
-    .where(
-      sql`${leads.id} IN (
-        SELECT id FROM leads l2 
-        WHERE l2.customer_id = ${leads.customerId} 
-        ORDER BY l2.created_at DESC 
-        LIMIT 1
-      ) AND ${lte(leads.nextFollowupDate, today)}`
-    )
-    .orderBy(desc(leads.createdAt))
+  // Aaj aur aaj se pehle ki due dates wale customers ko dueLeads mein fetch karna
+  const rawDueLeads = await db
+    .select()
+    .from(leadcustomer)
+    .where(lte(leadcustomer.nextFollowupDate, today))
+    .orderBy(desc(leadcustomer.createdAt))
     .all();
+
+  // Type compatibility maintain karne ke liye mapping
+  const dueLeads: DueLeadItem[] = rawDueLeads.map((c) => ({
+    leadId: c.id,
+    customerId: c.id,
+    customerName: c.fullname,
+    phone: c.phone,
+    remarks: null,
+    nextFollowupDate: c.nextFollowupDate,
+    status: c.status,
+  }));
 
   return { allCustomers, dueLeads };
 }
@@ -74,33 +68,34 @@ export async function getDashboardData(searchQuery?: string) {
 export async function getCustomerHistory(customerId: string) {
   if (!customerId) return [];
   
-  return await db
-    .select()
-    .from(leads)
-    .where(eq(leads.customerId, customerId))
-    .orderBy(desc(leads.createdAt))
-    .all();
+  // Leads table khatam hone ki wajah se empty array ya customer record return karein
+  const customer = await db.select().from(leads).where(eq(leads.customerId, customerId)).all();
+  return customer;
 }
 
 export async function saveLead(formData: FormData) {
-  const customerId = formData.get('customerId') as string;
-  const remarks = formData.get('remarks') as string;
-  const nextFollowupDate = formData.get('nextFollowupDate') as string;
-  const status = (formData.get('status') as string) || 'Pending';
+  const customerId = formData.get('customerId') as string;
+  const remarks = formData.get('remarks') as string;
+  const nextFollowupDate = formData.get('nextFollowupDate') as string;
+  const status = (formData.get('status') as string) || 'Pending';
 
-  if (!customerId || !remarks || !nextFollowupDate) {
-    throw new Error('Tamama fields lazmi hain!');
-  }
+  if (!customerId || !remarks || !nextFollowupDate) {
+    throw new Error('Enter all required fields: Customer, Remarks, Next Follow-up Date.');
+  }
+await db
+    .update(leadcustomer)
+    .set({
+      nextFollowupDate,
+    })
+    .where(eq(leadcustomer.id, customerId));
+  await db.insert(leads).values({
+    id: randomUUID(),
+    customerId,
+    remarks,
+    status,
+    createdBy: 'Admin',
+    createdAt: new Date().toISOString(),
+  });
 
-  await db.insert(leads).values({
-    id: randomUUID(),
-    customerId,
-    remarks,
-    nextFollowupDate,
-    status,
-    createdBy: 'Admin',
-    createdAt: new Date().toISOString(),
-  });
-
-  revalidatePath('/leads');
+  revalidatePath('/leads');
 }

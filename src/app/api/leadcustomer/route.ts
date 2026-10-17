@@ -87,6 +87,7 @@ export async function addCustomer(formData: FormData) {
       refname,
       refnumber,
       refemail,
+      nextFollowupDate: new Date().toISOString().split('T')[0], // Default next follow-up date to today
       refaddress,
       createdby: userId,
       status: 'Active',

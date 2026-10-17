@@ -43,7 +43,7 @@ export const leadcustomer = sqliteTable('leadcustomer', {
   refnumber: text('refnumber'),
   refemail: text('refemail'),
   refaddress: text('refaddress'),
-  
+  nextFollowupDate: text('next_followup_date').notNull(), // Format: YYYY-MM-DD
   createdby: text('createdby').notNull(),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'),
@@ -52,7 +52,6 @@ export const leads = sqliteTable('leads', {
   id: text('id').primaryKey(),
   customerId: text('customer_id').notNull().references(() => leadcustomer.id),
   remarks: text('remarks').notNull(),
-  nextFollowupDate: text('next_followup_date').notNull(), // Format: YYYY-MM-DD
   status: text('status').notNull().default('Pending'), // Pending, Completed, Cancelled
   createdBy: text('created_by').notNull(),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),

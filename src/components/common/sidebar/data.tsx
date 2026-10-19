@@ -76,6 +76,16 @@ export const NAV_DATA = [
           },
         ],
       },
+               {
+        title: "Dealers",
+        icon: <UserGroupIcon />,
+        items: [
+          {
+            title: "List Dealers",
+            url: "/dealers",
+          },
+        ],
+      },
        {
         title: "Property",
         icon: <BuildingIcon />,

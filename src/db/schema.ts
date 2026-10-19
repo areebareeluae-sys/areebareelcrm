@@ -130,6 +130,23 @@ export const documents = sqliteTable('documents', {
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'),
 });
+export const dealeruserscrm = sqliteTable('dealeruserscrm', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  cnicNumber: text('cnic_number').notNull().unique(),
+  phoneNumber: text('phone_number').notNull().unique(),
+  companyName: text('company_name').notNull(),
+  companyAddress: text('company_address').notNull(),
+  frontCnicImage: text('front_cnic_image').notNull(),
+  backCnicImage: text('back_cnic_image').notNull(),
+  password : text('password').notNull(),
+  status: text('status', { enum: ['pending', 'approved', 'rejected'] })
+    .notNull()
+    .default('pending'),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+});
 
 
 

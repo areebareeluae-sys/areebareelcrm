@@ -81,8 +81,12 @@ export const NAV_DATA = [
         icon: <UserGroupIcon />,
         items: [
           {
-            title: "List Dealers",
+            title: "Pending Dealers",
             url: "/dealers",
+          },
+          {
+            title: "List Dealers",
+            url: "/dealers-management",
           },
         ],
       },

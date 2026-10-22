@@ -64,7 +64,7 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
   const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentProperties = filteredProperties.slice(startIndex, startIndex + itemsPerPage);
-
+const [deletingId, setDeletingId] = useState<string | null>(null);
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -74,7 +74,32 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
     setSelectedCountry(e.target.value);
     setCurrentPage(1);
   };
+async function handleDeleteDocument(docId: string) {
+    if (!confirm('Are you agree Delete this Document? ')) return;
 
+    setDeletingId(docId); // <--- Is document ID ke liye loading start ho jayegi
+    try {
+      const res = await fetch(`/api/documents?id=${docId}`, {
+        method: 'DELETE',
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert('Document deleted successfully!');
+        
+        // Page refresh ya state update
+          setViewPdfProperty(null)
+
+      } else {
+        alert(result.error || 'Failed to delete document');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete document');
+    } finally {
+      setDeletingId(null); // <--- Loading khatam
+    }
+  }
   // Fetch Documents when View PDF modal opens
   async function handleOpenViewPdf(property: any) {
     setViewPdfProperty(property);
@@ -94,22 +119,55 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
   }
 
   // Handle Upload PDF Submit
-  async function handleUploadPdfSubmit(e: React.FormEvent) {
+async function handleUploadPdfSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!uploadPdfProperty || !pdfFile) return;
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('tableName', 'property');
-      formData.append('entityId', uploadPdfProperty.id);
-      formData.append('title', pdfTitle || pdfFile.name);
-      formData.append('file', pdfFile);
+      // 1. Prepare FormData for Direct Cloudinary Upload
+      const cloudinaryFormData = new FormData();
+      cloudinaryFormData.append('file', pdfFile);
+      cloudinaryFormData.append('upload_preset', 'real_estate_albums'); // <--- Yahan apna unsigned preset name dalein
+      cloudinaryFormData.append('folder', 'crm_documents');
 
+      // Filename cleanup
+      const originalNameWithoutExt = pdfFile.name.replace(/\.[^/.]+$/, "");
+      const safePublicId = originalNameWithoutExt
+        .replace(/[^a-zA-Z0-9_\-]/g, "_")
+        .replace(/_+/g, "_");
+      cloudinaryFormData.append('public_id', safePublicId);
+
+      // 2. Direct upload to Cloudinary (Bypass Next.js server limits)
+      const cloudName = "y556pcib"; // Aapka cloud name
+      const cloudinaryRes = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/raw/upload`,
+        {
+          method: 'POST',
+          body: cloudinaryFormData,
+        }
+      );
+
+      const cloudinaryData = await cloudinaryRes.json();
+
+      if (!cloudinaryRes.ok) {
+        throw new Error(cloudinaryData.error?.message || 'Cloudinary upload failed');
+      }
+
+      // 3. Save metadata (secure_url) to your Database via your API
       const res = await fetch('/api/documents', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          tableName: 'property',
+          entityId: uploadPdfProperty.id,
+          title: pdfTitle || pdfFile.name,
+          fileUrl: cloudinaryData.secure_url,
+        }),
       });
+
       const result = await res.json();
 
       if (result.success) {
@@ -118,11 +176,11 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
         setPdfFile(null);
         setPdfTitle('');
       } else {
-        alert(result.error || 'Failed to upload PDF');
+        alert(result.error || 'Failed to save document details');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      alert('Failed to upload PDF');
+      alert(error.message || 'Failed to upload PDF');
     } finally {
       setUploading(false);
     }
@@ -486,9 +544,9 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
               ) : (
                 <div className="space-y-2 text-xs">
                   {fetchingDocs ? (
-                    <p className="text-center py-10 text-gray-400">PDFs load ho rahe hain...</p>
+                    <p className="text-center py-10 text-gray-400">Loading...</p>
                   ) : propertyDocuments.length === 0 ? (
-                    <p className="text-center py-10 text-gray-400">Is property ki koi PDF maujood nahi hai.</p>
+                    <p className="text-center py-10 text-gray-400">No Records Found.</p>
                   ) : (
                     propertyDocuments.map((doc) => (
                       <div key={doc.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-100 rounded-xl hover:bg-gray-100/50 transition">
@@ -525,6 +583,20 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
                           >
                             <Download className="w-3 h-3" /> Download
                           </button>
+<button
+      onClick={() => handleDeleteDocument(doc.id)}
+      disabled={deletingId === doc.id} // Jab delete ho raha ho toh button disable rahay
+      className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+    >
+      {deletingId === doc.id ? (
+        <>
+          {/* Chota sa loading spinner ya text */}
+          <span>Deleting...</span>
+        </>
+      ) : (
+        'Delete'
+      )}
+    </button>
                         </div>
                       </div>
                     ))

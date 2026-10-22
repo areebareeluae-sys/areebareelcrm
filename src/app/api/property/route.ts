@@ -21,7 +21,6 @@ function getPublicIdFromUrl(url: string) {
     const uploadIndex = parts.indexOf('upload');
     if (uploadIndex === -1) return null;
 
-    // 'upload' ke baad version (jaise v12345678) hota hai, uske baad folder/public_id hota hai
     const publicIdWithExtension = parts.slice(uploadIndex + 2).join('/');
     const publicId = publicIdWithExtension.substring(0, publicIdWithExtension.lastIndexOf('.'));
     return publicId;
@@ -40,13 +39,11 @@ export async function getPropertyDetails(id: string) {
     let sellerData = null;
     let buyerData = null;
 
-    // Seller data fetch
     if (propertyData.salescustomerid) {
       const sellerRes = await db.select().from(customer).where(eq(customer.id, propertyData.salescustomerid));
       sellerData = sellerRes[0] || null;
     }
 
-    // Buyer data fetch (Agar property sold hai aur buyercustomerid mojood hai)
     if (propertyData.buyercustomerid) {
       const buyerRes = await db.select().from(customer).where(eq(customer.id, propertyData.buyercustomerid));
       buyerData = buyerRes[0] || null;
@@ -56,7 +53,7 @@ export async function getPropertyDetails(id: string) {
       success: true,
       property: propertyData,
       seller: sellerData,
-      buyer: buyerData, // 👈 Buyer data yahan return hoga
+      buyer: buyerData,
     };
   } catch (error) {
     console.error('Error fetching property details:', error);
@@ -85,20 +82,7 @@ export async function getCustomersForModal() {
   return await db.select().from(customer);
 }
 
-// 3. Server action to upload a single image to Cloudinary securely
-export async function uploadImageToCloudinary(base64Image: string) {
-  try {
-    const uploadResponse = await cloudinary.uploader.upload(base64Image, {
-      folder: 'aap_crm_properties',
-    });
-    return { success: true, url: uploadResponse.secure_url };
-  } catch (error: any) {
-    console.error('Cloudinary Upload Error:', error);
-    return { success: false, error: error.message || 'Image upload failed' };
-  }
-}
-
-// 4. Add Property
+// 3. Add Property (Receives final image URLs)
 export async function addProperty(formData: FormData, salescustomerid: string, imageUrls: string[]) {
   const cookieStore = await cookies();
   const userId = cookieStore.get('userId')?.value || 'admin';
@@ -116,8 +100,6 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
   const bedrooms = Number(formData.get('bedrooms'));
   const area = formData.get('area') as string;
   const Garages = Number(formData.get('Garages'));
-  
-  // 👈 Tags handle karna yahan add kiya gaya hai
   const tags = formData.get('tags') as string || '[]';
 
   const refname = formData.get('refname') as string;
@@ -142,7 +124,7 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
       area,
       Garages,
       images: JSON.stringify(imageUrls),
-      tags, // 👈 Insert mein tags pass kar diye
+      tags,
       Purchaseorderid: "",
       salescustomerid,
       buyercustomerid: '',
@@ -168,7 +150,7 @@ export async function addProperty(formData: FormData, salescustomerid: string, i
   }
 }
 
-// 5. Update Property (With Cloudinary Image Deletion)
+// 4. Update Property (Deletes removed images from Cloudinary & updates URLs)
 export async function updateProperty(id: string, formData: FormData, salescustomerid: string, imageUrls: string[]) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
@@ -183,8 +165,6 @@ export async function updateProperty(id: string, formData: FormData, salescustom
   const bedrooms = Number(formData.get('bedrooms'));
   const area = formData.get('area') as string;
   const Garages = Number(formData.get('Garages'));
-
-  // 👈 Tags handle karna update mein bhi add kiya gaya hai
   const tags = formData.get('tags') as string || '[]';
 
   const refname = formData.get('refname') as string;
@@ -193,7 +173,7 @@ export async function updateProperty(id: string, formData: FormData, salescustom
   const refaddress = formData.get('refaddress') as string;
 
   try {
-    // A. Database se pehle ki purani property details mangwayen
+    // A. Fetch existing property to check old images
     const existingProperty = await db.select().from(property).where(eq(property.id, id)).limit(1);
 
     if (existingProperty.length > 0) {
@@ -204,10 +184,10 @@ export async function updateProperty(id: string, formData: FormData, salescustom
         oldImages = [];
       }
 
-      // B. Jo images purani list mein thi lekin naye list mein nahi hain unko filter karein
+      // B. Find images that were in the old list but are missing in the new list
       const imagesToDelete = oldImages.filter((oldUrl) => !imageUrls.includes(oldUrl));
 
-      // C. Cloudinary se wo images delete karein
+      // C. Delete removed images from Cloudinary
       for (const imgUrl of imagesToDelete) {
         const publicId = getPublicIdFromUrl(imgUrl);
         if (publicId) {
@@ -216,7 +196,7 @@ export async function updateProperty(id: string, formData: FormData, salescustom
       }
     }
 
-    // D. Database record update karein
+    // D. Update database record
     await db.update(property)
       .set({
         title,
@@ -233,7 +213,7 @@ export async function updateProperty(id: string, formData: FormData, salescustom
         area,
         Garages,
         images: JSON.stringify(imageUrls),
-        tags, // 👈 Update mein tags save kar diye
+        tags,
         salescustomerid,
         refname,
         refnumber,
@@ -250,10 +230,9 @@ export async function updateProperty(id: string, formData: FormData, salescustom
   }
 }
 
-// 6. Delete Property (With Cloudinary Images Cleanup)
+// 5. Delete Property (Cleans up all images from Cloudinary)
 export async function deleteProperty(id: string) {
   try {
-    // A. Pehle property fetch karein taaki image URLs mil saken
     const existingProperty = await db.select().from(property).where(eq(property.id, id)).limit(1);
 
     if (existingProperty.length > 0) {
@@ -264,7 +243,6 @@ export async function deleteProperty(id: string) {
         images = [];
       }
 
-      // B. Saari images ko Cloudinary se delete karein
       for (const imgUrl of images) {
         const publicId = getPublicIdFromUrl(imgUrl);
         if (publicId) {
@@ -273,7 +251,6 @@ export async function deleteProperty(id: string) {
       }
     }
 
-    // C. Database se property record delete karein
     await db.delete(property).where(eq(property.id, id));
     revalidatePath('/properties');
     return { success: true };

@@ -6,7 +6,6 @@ import {
   addProperty, 
   updateProperty, 
   deleteProperty, 
-  uploadImageToCloudinary 
 } from '../../../api/property/route';
 
 interface Customer {
@@ -135,7 +134,7 @@ const [modalPage, setModalPage] = useState(1);
     const files = e.target.files;
     if (!files) return;
 
-    if (selectedImages.length + files.length > 25) {
+    if (selectedImages.length + files.length > 200) {
       alert('You can upload a maximum of 25 images.');
       return;
     }
@@ -185,120 +184,172 @@ const [modalPage, setModalPage] = useState(1);
     setSalesCustomerId('');
     setSalesCustomerName('');
   };
+// 1. Direct Frontend Cloudinary Image Upload Helper
+ // Component ke top par state declare karne ke liye yeh add kar dein:
+const [originalImagesBeforeEdit, setOriginalImagesBeforeEdit] = useState<string>('[]');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!salesCustomerId) {
-      alert('Please select a Seller customer first!');
-      return;
-    }
+// 1. Direct Frontend Cloudinary Image Upload Helper
+async function uploadImageDirectlyToCloudinary(imageSrc: string): Promise<string> {
+  const cloudinaryFormData = new FormData();
+  cloudinaryFormData.append('file', imageSrc);
+  cloudinaryFormData.append('upload_preset', 'real_estate_albums'); // Aapka unsigned preset
+  cloudinaryFormData.append('folder', 'aap_crm_properties');
 
-    setLoading(true);
+  const cloudName = "y556pcib";
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: 'POST',
+    body: cloudinaryFormData,
+  });
+  
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error?.message || 'Cloudinary image upload failed');
+  }
+  return data.secure_url;
+}
 
-    try {
-      const uploadedUrls: string[] = [];
-      for (const imgBase64 of selectedImages) {
-        if (imgBase64.startsWith('http')) {
-          uploadedUrls.push(imgBase64);
-        } else {
-          const uploadRes = await uploadImageToCloudinary(imgBase64);
-          if (uploadRes.success && uploadRes.url) {
-            uploadedUrls.push(uploadRes.url);
-          } else {
-            alert('Failed to upload one or more images: ' + uploadRes.error);
-            setLoading(false);
-            return;
-          }
+// 2. Direct Frontend Cloudinary Image Delete Helper (Edit ke waqt purani images delete karne ke liye)
+async function deleteImageFromCloudinary(url: string) {
+  try {
+    await fetch('/api/delete-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+  } catch (err) {
+    console.error('Failed to delete image from Cloudinary:', err);
+  }
+}
+
+// 3. Updated handleSubmit Function
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!salesCustomerId) {
+    alert('Please select a Seller customer first!');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    // --- EDIT MODE LOGIC: Purani images jo user ne hata di hain, unhe Cloudinary se delete karna ---
+    if (isEditing) {
+      const oldImages = JSON.parse(originalImagesBeforeEdit || '[]');
+      const removedImages = oldImages.filter((oldUrl: string) => !selectedImages.includes(oldUrl));
+
+      for (const imgUrl of removedImages) {
+        if (imgUrl.startsWith('http')) {
+          await deleteImageFromCloudinary(imgUrl); // Direct frontend se Cloudinary delete call
         }
       }
-
-      const formData = new FormData();
-      formData.append('refname', refName);
-      formData.append('refnumber', refNumber);
-      formData.append('refemail', refEmail);
-      formData.append('refaddress', refAddress);
-      formData.append('title', title);
-      formData.append('description', description);
-      formData.append('maxprice', maxPrice.replace(/,/g, ''));
-      formData.append('minprice', minPrice.replace(/,/g, ''));
-      formData.append('category', category);
-      formData.append('tags', JSON.stringify(tags));
-      formData.append('type', type);
-      formData.append('address', address);
-      formData.append('city', city);
-      formData.append('country', country);
-      formData.append('bathrooms', bathrooms.toString());
-      formData.append('bedrooms', bedrooms.toString());
-      formData.append('area', area);
-      formData.append('Garages', garages.toString());
-
-      let res;
-      if (isEditing) {
-        res = await updateProperty(isEditing, formData, salesCustomerId, uploadedUrls);
-      } else {
-        res = await addProperty(formData, salesCustomerId, uploadedUrls);
-      }
-
-      setLoading(false);
-      if (res.success) {
-        alert(isEditing ? 'Property updated successfully!' : 'Property added successfully!');
-        window.location.reload();
-      } else {
-        alert('Error: ' + res.error);
-      }
-    } catch (err: any) {
-      console.error(err);
-      setLoading(false);
-      alert('An unexpected error occurred.');
-    }
-  };
-
-  const handleEdit = (prop: PropertyItem) => {
-    setIsEditing(prop.id);
-    setRefName(prop.refname);
-    setRefNumber(prop.refnumber);
-    setRefEmail(prop.refemail);
-    setRefAddress(prop.refaddress);
-    setTitle(prop.title);
-    setDescription(prop.description);
-    setMaxPrice(prop.maxprice ? Number(prop.maxprice).toLocaleString() : '');
-    setMinPrice(prop.minprice ? Number(prop.minprice).toLocaleString() : '');
-    setCategory(prop.category);
-    setType(prop.type);
-    setAddress(prop.address);
-    setCountry(prop.country);
-    setCity(prop.city);
-    setBathrooms(prop.bathrooms);
-    setBedrooms(prop.bedrooms);
-    setArea(prop.area);
-    setGarages(prop.Garages);
-    setSalesCustomerId(prop.salescustomerid);
-    try {
-  setTags(JSON.parse(prop.tags || '[]'));
-} catch {
-  setTags([]);
-}
-    try {
-      setSelectedImages(JSON.parse(prop.images || '[]'));
-    } catch {
-      setSelectedImages([]);
     }
 
-    const foundCust = customers.find((c) => c.id === prop.salescustomerid);
-    if (foundCust) setSalesCustomerName(foundCust.fullname);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this property?')) {
-      const res = await deleteProperty(id);
-      if (res.success) {
-        setProperties((prev) => prev.filter((p) => p.id !== id));
+    // --- UPLOAD NEW IMAGES: Nayi images ko direct frontend se upload karna (40+ images easily upload hongi) ---
+    const uploadedUrls: string[] = [];
+    for (const imgBase64 of selectedImages) {
+      if (imgBase64.startsWith('http')) {
+        uploadedUrls.push(imgBase64); // Jo pehle se uploaded hain (unchanged)
       } else {
-        alert(res.error);
+        const secureUrl = await uploadImageDirectlyToCloudinary(imgBase64);
+        uploadedUrls.push(secureUrl);
       }
     }
-  };
+
+    const formData = new FormData();
+    formData.append('refname', refName);
+    formData.append('refnumber', refNumber);
+    formData.append('refemail', refEmail);
+    formData.append('refaddress', refAddress);
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('maxprice', maxPrice.replace(/,/g, ''));
+    formData.append('minprice', minPrice.replace(/,/g, ''));
+    formData.append('category', category);
+    formData.append('tags', JSON.stringify(tags));
+    formData.append('type', type);
+    formData.append('address', address);
+    formData.append('city', city);
+    formData.append('country', country);
+    formData.append('bathrooms', bathrooms.toString());
+    formData.append('bedrooms', bedrooms.toString());
+    formData.append('area', area);
+    formData.append('Garages', garages.toString());
+
+    let res;
+    if (isEditing) {
+      res = await updateProperty(isEditing, formData, salesCustomerId, uploadedUrls);
+    } else {
+      res = await addProperty(formData, salesCustomerId, uploadedUrls);
+    }
+
+    setLoading(false);
+    if (res.success) {
+      alert(isEditing ? 'Property updated successfully!' : 'Property added successfully!');
+      window.location.reload();
+    } else {
+      alert('Error: ' + res.error);
+    }
+  } catch (err: any) {
+    console.error(err);
+    setLoading(false);
+    alert(err.message || 'An unexpected error occurred.');
+  }
+};
+
+// 4. Updated handleEdit Function
+const handleEdit = (prop: PropertyItem) => {
+  setIsEditing(prop.id);
+  setRefName(prop.refname);
+  setRefNumber(prop.refnumber);
+  setRefEmail(prop.refemail);
+  setRefAddress(prop.refaddress);
+  setTitle(prop.title);
+  setDescription(prop.description);
+  setMaxPrice(prop.maxprice ? Number(prop.maxprice).toLocaleString() : '');
+  setMinPrice(prop.minprice ? Number(prop.minprice).toLocaleString() : '');
+  setCategory(prop.category);
+  setType(prop.type);
+  setAddress(prop.address);
+  setCountry(prop.country);
+  setCity(prop.city);
+  setBathrooms(prop.bathrooms);
+  setBedrooms(prop.bedrooms);
+  setArea(prop.area);
+  setGarages(prop.Garages);
+  setSalesCustomerId(prop.salescustomerid);
+
+  try {
+    setTags(JSON.parse(prop.tags || '[]'));
+  } catch {
+    setTags([]);
+  }
+
+  try {
+    const parsedImages = JSON.parse(prop.images || '[]');
+    setSelectedImages(parsedImages);
+    setOriginalImagesBeforeEdit(prop.images || '[]'); // <--- Original images save ho gayi edit ke liye
+  } catch {
+    setSelectedImages([]);
+    setOriginalImagesBeforeEdit('[]');
+  }
+
+  const foundCust = customers.find((c) => c.id === prop.salescustomerid);
+  if (foundCust) setSalesCustomerName(foundCust.fullname);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+// 5. Delete Function
+const handleDelete = async (id: string) => {
+  if (confirm('Are you sure you want to delete this property?')) {
+    const res = await deleteProperty(id);
+    if (res.success) {
+      setProperties((prev) => prev.filter((p) => p.id !== id));
+      window.location.reload(); // Page refresh to update list properly
+    } else {
+      alert(res.error);
+    }
+  }
+};
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -622,7 +673,7 @@ const [modalPage, setModalPage] = useState(1);
 </div>
           <div className="md:col-span-3 space-y-2">
             <label className="block text-xs font-semibold text-gray-600">
-              Upload Images (Max 25 images, max 500KB each)
+              Upload Images (Max 200 images, max 500KB each)
             </label>
             <input
               type="file"

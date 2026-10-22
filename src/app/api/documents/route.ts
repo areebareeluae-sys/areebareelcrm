@@ -9,7 +9,6 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -35,46 +34,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const tableName = formData.get('tableName') as string;
-    const entityId = formData.get('entityId') as string;
-    const title = formData.get('title') as string;
-    const file = formData.get('file') as File;
+    const body = await request.json();
+    const { tableName, entityId, title, fileUrl } = body;
 
-    if (!file || !tableName || !entityId) {
+    if (!fileUrl || !tableName || !entityId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
     }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Filename ko sanitize karne ka logic (spaces aur special chars hatane ke liye)
-    const originalNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-    const safePublicId = originalNameWithoutExt
-      .replace(/[^a-zA-Z0-9_\-]/g, "_") // Non-alphanumeric chars ko underscore('_') se replace kar dega
-      .replace(/_+/g, "_");             // Multiple underscores ko single underscore kar dega
-
-    const uploadResult: any = await new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        { 
-          resource_type: 'raw',
-          folder: 'crm_documents',
-          public_id: safePublicId // <--- Ab yahan clean public_id jayegi
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        }
-      );
-      uploadStream.end(buffer);
-    });
 
     await db.insert(documents).values({
       id: Date.now().toString(),
       tableName,
       entityId,
-      fileUrl: uploadResult.secure_url,
-      title: title || file.name,
+      fileUrl,
+      title: title || 'Untitled Document',
       status: 'Active',
       createdAt: new Date().toISOString(),
     });
@@ -82,6 +54,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ success: false, error: 'Upload failed' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Failed to save to database' }, { status: 500 });
+  }
+}
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Document ID is required' }, { status: 400 });
+    }
+
+    // 1. Database se document fetch karein
+    const [doc] = await db.select().from(documents).where(eq(documents.id, id));
+
+    if (doc && doc.fileUrl) {
+      try {
+        // 2. fileUrl se public_id nikalne ka 100% working tareeqa:
+        // URL aisi hoti hai: https://res.cloudinary.com/y556pcib/raw/upload/v171000/crm_documents/my_file.pdf
+        const urlWithoutQuery = doc.fileUrl.split('?')[0]; // Query params hata dein agar hain
+        const parts = urlWithoutQuery.split('/upload/');
+        
+        if (parts.length > 1) {
+          let pathAfterUpload = parts[1]; // e.g., "v171000/crm_documents/my_file.pdf" ya "crm_documents/my_file.pdf"
+          
+          // Agar version (v123456/) mojood hai toh usay remove kar dein
+          pathAfterUpload = pathAfterUpload.replace(/^v\d+\//, '');
+          
+          // Akhir se extension (.pdf) hata dein taake sirf folder/filename bache
+          const publicId = pathAfterUpload.substring(0, pathAfterUpload.lastIndexOf('.'));
+
+          console.log('Extracted public_id:', publicId); // Debugging ke liye check kar sakte hain
+
+          // 3. Cloudinary se delete karein
+          if (publicId) {
+            await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+          }
+        }
+      } catch (cloudError) {
+        console.error('Cloudinary delete error:', cloudError);
+      }
+    }
+
+    // 4. Database se record delete karein
+    await db.delete(documents).where(eq(documents.id, id));
+
+    return NextResponse.json({ success: true, message: 'Document deleted successfully' });
+  } catch (error) {
+    console.error('Delete error:', error);
+    return NextResponse.json({ success: false, error: 'Failed to delete document' }, { status: 500 });
   }
 }

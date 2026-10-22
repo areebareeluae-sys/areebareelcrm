@@ -184,173 +184,198 @@ const [modalPage, setModalPage] = useState(1);
     setSalesCustomerId('');
     setSalesCustomerName('');
   };
-// 1. Direct Frontend Cloudinary Image Upload Helper
- // Component ke top par state declare karne ke liye yeh add kar dein:
 const [originalImagesBeforeEdit, setOriginalImagesBeforeEdit] = useState<string>('[]');
-
 // 1. Direct Frontend Cloudinary Image Upload Helper
-async function uploadImageDirectlyToCloudinary(imageSrc: string): Promise<string> {
-  const cloudinaryFormData = new FormData();
-  cloudinaryFormData.append('file', imageSrc);
-  cloudinaryFormData.append('upload_preset', 'real_estate_albums'); // Aapka unsigned preset
-  cloudinaryFormData.append('folder', 'aap_crm_properties');
+  async function uploadImageDirectlyToCloudinary(imageSrc: string): Promise<string> {
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append('file', imageSrc);
+    cloudinaryFormData.append('upload_preset', 'real_estate_albums'); // Aapka unsigned preset
+    cloudinaryFormData.append('folder', 'aap_crm_properties');
 
-  const cloudName = "y556pcib";
-  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: 'POST',
-    body: cloudinaryFormData,
-  });
-  
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error?.message || 'Cloudinary image upload failed');
-  }
-  return data.secure_url;
-}
-
-// 2. Direct Frontend Cloudinary Image Delete Helper (Edit ke waqt purani images delete karne ke liye)
-async function deleteImageFromCloudinary(url: string) {
-  try {
-    await fetch('/api/delete-image', {
+    const cloudName = "y556pcib";
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url }),
+      body: cloudinaryFormData,
     });
-  } catch (err) {
-    console.error('Failed to delete image from Cloudinary:', err);
-  }
-}
-
-// 3. Updated handleSubmit Function
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!salesCustomerId) {
-    alert('Please select a Seller customer first!');
-    return;
+    
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error?.message || 'Cloudinary image upload failed');
+    }
+    return data.secure_url;
   }
 
-  setLoading(true);
+  // 2. Direct Frontend Cloudinary Image Delete Helper (Edit/Delete ke waqt)
+  async function deleteImageFromCloudinary(url: string) {
+    try {
+      await fetch('/api/delete-image', { // Yeh wahi API hai jo humne banayi thi
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+    } catch (err) {
+      console.error('Failed to delete image from Cloudinary:', err);
+    }
+  }
 
-  try {
-    // --- EDIT MODE LOGIC: Purani images jo user ne hata di hain, unhe Cloudinary se delete karna ---
-    if (isEditing) {
-      const oldImages = JSON.parse(originalImagesBeforeEdit || '[]');
-      const removedImages = oldImages.filter((oldUrl: string) => !selectedImages.includes(oldUrl));
+  // 3. Updated handleSubmit (Handles Edit, Cloudinary Deletion, and Direct Uploads)
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!salesCustomerId) {
+      alert('Please select a Seller customer first!');
+      return;
+    }
 
-      for (const imgUrl of removedImages) {
-        if (imgUrl.startsWith('http')) {
-          await deleteImageFromCloudinary(imgUrl); // Direct frontend se Cloudinary delete call
+    setLoading(true);
+
+    try {
+      // --- EDIT MODE: Agar user ne purani images hata di hain, toh unhe Cloudinary se frontend se delete karein ---
+      if (isEditing) {
+        const oldImages = JSON.parse(originalImagesBeforeEdit || '[]'); // Edit shuru hone waali original images
+        const removedImages = oldImages.filter((oldUrl: string) => !selectedImages.includes(oldUrl));
+
+        for (const imgUrl of removedImages) {
+          if (imgUrl.startsWith('http')) {
+            await deleteImageFromCloudinary(imgUrl); // Direct frontend se Cloudinary delete call
+          }
         }
       }
-    }
 
-    // --- UPLOAD NEW IMAGES: Nayi images ko direct frontend se upload karna (40+ images easily upload hongi) ---
-    const uploadedUrls: string[] = [];
-    for (const imgBase64 of selectedImages) {
-      if (imgBase64.startsWith('http')) {
-        uploadedUrls.push(imgBase64); // Jo pehle se uploaded hain (unchanged)
+      // --- UPLOAD NEW IMAGES: Nayi images ko direct frontend se upload karein ---
+      const uploadedUrls: string[] = [];
+      for (const imgBase64 of selectedImages) {
+        if (imgBase64.startsWith('http')) {
+          uploadedUrls.push(imgBase64); // Jo pehle se uploaded hain (unchanged)
+        } else {
+          // Nayi image direct upload (Chahein 40 images hon, server par koi load nahi aayega!)
+          const secureUrl = await uploadImageDirectlyToCloudinary(imgBase64);
+          uploadedUrls.push(secureUrl);
+        }
+      }
+
+      // --- PREPARE FORM DATA FOR DATABASE ---
+      const formData = new FormData();
+      formData.append('refname', refName);
+      formData.append('refnumber', refNumber);
+      formData.append('refemail', refEmail);
+      formData.append('refaddress', refAddress);
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('maxprice', maxPrice.replace(/,/g, ''));
+      formData.append('minprice', minPrice.replace(/,/g, ''));
+      formData.append('category', category);
+      formData.append('tags', JSON.stringify(tags));
+      formData.append('type', type);
+      formData.append('address', address);
+      formData.append('city', city);
+      formData.append('country', country);
+      formData.append('bathrooms', bathrooms.toString());
+      formData.append('bedrooms', bedrooms.toString());
+      formData.append('area', area);
+      formData.append('Garages', garages.toString());
+
+      let res;
+      if (isEditing) {
+        // Ab server action ko sirf final URLs bhejenge (koi heavy files nahi)
+        res = await updateProperty(isEditing, formData, salesCustomerId, uploadedUrls);
       } else {
-        const secureUrl = await uploadImageDirectlyToCloudinary(imgBase64);
-        uploadedUrls.push(secureUrl);
+        res = await addProperty(formData, salesCustomerId, uploadedUrls);
+      }
+
+      setLoading(false);
+      if (res.success) {
+        alert(isEditing ? 'Property updated successfully!' : 'Property added successfully!');
+        window.location.reload();
+      } else {
+        alert('Error: ' + res.error);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setLoading(false);
+      alert(err.message || 'An unexpected error occurred.');
+    }
+  };
+  
+const handleEdit = (prop: PropertyItem) => {
+    setLoading(true);
+    setTimeout(() => {
+      try {
+        setIsEditing(prop.id);
+        setRefName(prop.refname);
+        setRefNumber(prop.refnumber);
+        setRefEmail(prop.refemail);
+        setRefAddress(prop.refaddress);
+        setTitle(prop.title);
+        setDescription(prop.description);
+        setMaxPrice(prop.maxprice ? Number(prop.maxprice).toLocaleString() : '');
+        setMinPrice(prop.minprice ? Number(prop.minprice).toLocaleString() : '');
+        setCategory(prop.category);
+        setType(prop.type);
+        setAddress(prop.address);
+        setCountry(prop.country);
+        setCity(prop.city);
+        setBathrooms(prop.bathrooms);
+        setBedrooms(prop.bedrooms);
+        setArea(prop.area);
+        setGarages(prop.Garages);
+        setSalesCustomerId(prop.salescustomerid);
+
+        try {
+          setTags(JSON.parse(prop.tags || '[]'));
+        } catch {
+          setTags([]);
+        }
+
+        // --- SAFE IMAGE PARSING FIX ---
+        let imagesArray: string[] = [];
+        if (prop.images) {
+          if (Array.isArray(prop.images)) {
+            imagesArray = prop.images;
+          } else if (typeof prop.images === 'string') {
+            try {
+              const parsed = JSON.parse(prop.images);
+              imagesArray = Array.isArray(parsed) ? parsed : [prop.images];
+            } catch {
+              imagesArray = [prop.images];
+            }
+          }
+        }
+        setSelectedImages(imagesArray);
+        setOriginalImagesBeforeEdit(JSON.stringify(imagesArray));
+        // ------------------------------
+
+        const foundCust = customers.find((c) => c.id === prop.salescustomerid);
+        if (foundCust) setSalesCustomerName(foundCust.fullname);
+        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }, 50);
+  };
+
+const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this property?')) {
+      setLoading(true); // <--- Poore page par loading chalu
+      setIsModalOpen1(false)
+      try {
+        const res = await deleteProperty(id);
+        if (res.success) {
+          alert('Property and its images deleted successfully!');
+          window.location.reload(); // Page refresh
+        } else {
+          alert(res.error);
+          setLoading(false); // Agar error aaye toh loading hata dein
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Failed to delete property');
+        setLoading(false);
       }
     }
-
-    const formData = new FormData();
-    formData.append('refname', refName);
-    formData.append('refnumber', refNumber);
-    formData.append('refemail', refEmail);
-    formData.append('refaddress', refAddress);
-    formData.append('title', title);
-    formData.append('description', description);
-    formData.append('maxprice', maxPrice.replace(/,/g, ''));
-    formData.append('minprice', minPrice.replace(/,/g, ''));
-    formData.append('category', category);
-    formData.append('tags', JSON.stringify(tags));
-    formData.append('type', type);
-    formData.append('address', address);
-    formData.append('city', city);
-    formData.append('country', country);
-    formData.append('bathrooms', bathrooms.toString());
-    formData.append('bedrooms', bedrooms.toString());
-    formData.append('area', area);
-    formData.append('Garages', garages.toString());
-
-    let res;
-    if (isEditing) {
-      res = await updateProperty(isEditing, formData, salesCustomerId, uploadedUrls);
-    } else {
-      res = await addProperty(formData, salesCustomerId, uploadedUrls);
-    }
-
-    setLoading(false);
-    if (res.success) {
-      alert(isEditing ? 'Property updated successfully!' : 'Property added successfully!');
-      window.location.reload();
-    } else {
-      alert('Error: ' + res.error);
-    }
-  } catch (err: any) {
-    console.error(err);
-    setLoading(false);
-    alert(err.message || 'An unexpected error occurred.');
-  }
-};
-
-// 4. Updated handleEdit Function
-const handleEdit = (prop: PropertyItem) => {
-  setIsEditing(prop.id);
-  setRefName(prop.refname);
-  setRefNumber(prop.refnumber);
-  setRefEmail(prop.refemail);
-  setRefAddress(prop.refaddress);
-  setTitle(prop.title);
-  setDescription(prop.description);
-  setMaxPrice(prop.maxprice ? Number(prop.maxprice).toLocaleString() : '');
-  setMinPrice(prop.minprice ? Number(prop.minprice).toLocaleString() : '');
-  setCategory(prop.category);
-  setType(prop.type);
-  setAddress(prop.address);
-  setCountry(prop.country);
-  setCity(prop.city);
-  setBathrooms(prop.bathrooms);
-  setBedrooms(prop.bedrooms);
-  setArea(prop.area);
-  setGarages(prop.Garages);
-  setSalesCustomerId(prop.salescustomerid);
-
-  try {
-    setTags(JSON.parse(prop.tags || '[]'));
-  } catch {
-    setTags([]);
-  }
-
-  try {
-    const parsedImages = JSON.parse(prop.images || '[]');
-    setSelectedImages(parsedImages);
-    setOriginalImagesBeforeEdit(prop.images || '[]'); // <--- Original images save ho gayi edit ke liye
-  } catch {
-    setSelectedImages([]);
-    setOriginalImagesBeforeEdit('[]');
-  }
-
-  const foundCust = customers.find((c) => c.id === prop.salescustomerid);
-  if (foundCust) setSalesCustomerName(foundCust.fullname);
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-// 5. Delete Function
-const handleDelete = async (id: string) => {
-  if (confirm('Are you sure you want to delete this property?')) {
-    const res = await deleteProperty(id);
-    if (res.success) {
-      setProperties((prev) => prev.filter((p) => p.id !== id));
-      window.location.reload(); // Page refresh to update list properly
-    } else {
-      alert(res.error);
-    }
-  }
-};
-
+  };
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(() => {
@@ -369,6 +394,18 @@ const handleDelete = async (id: string) => {
   });
 
   return (
+    <div className="relative">
+      {/* --- FULL PAGE LOADING OVERLAY --- */}
+      {loading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center gap-3">
+            {/* Spinning Loader */}
+            <div className="animate-spin h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+            <p className="text-gray-800 font-semibold text-lg">Please wait...</p>
+            <p className="text-gray-500 text-sm">processing..........</p>
+          </div>
+        </div>
+      )}
     <div className="p-6 max-w-7xl mx-auto space-y-8">
     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border">
   <div>
@@ -682,22 +719,41 @@ const handleDelete = async (id: string) => {
               onChange={handleImageChange}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
             />
-            {selectedImages.length > 0 && (
-              <div className="flex flex-wrap gap-3 mt-3">
-                {selectedImages.map((img, idx) => (
-                  <div key={idx} className="relative w-20 h-20 border rounded-lg overflow-hidden shadow-sm group">
-                    <img src={img} alt="preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(idx)}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 group-hover:opacity-100 transition"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+         {(() => {
+  // Safe array conversion for rendering
+  const safeImages = Array.isArray(selectedImages) 
+    ? selectedImages 
+    : (typeof selectedImages === 'string' ? JSON.parse(selectedImages || '[]') : []);
+
+  if (safeImages.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-3 mt-3">
+      {safeImages.map((img: string, idx: number) => {
+        if (!img) return null;
+        return (
+          <div key={idx} className="relative w-20 h-20 border rounded-lg overflow-hidden shadow-sm group bg-gray-100 flex items-center justify-center">
+            <img 
+              src={img} 
+              alt={`preview-${idx}`} 
+              className="w-full h-full object-cover" 
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://placehold.co/80?text=Invalid';
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => removeImage(idx)}
+              className="absolute top-1 right-1 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-80 group-hover:opacity-100 transition shadow"
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+})()}
           </div>
         </div>
 
@@ -967,6 +1023,6 @@ const handleDelete = async (id: string) => {
           </div>
         </div>
       )}
-    </div>
+    </div></div>
   );
 }

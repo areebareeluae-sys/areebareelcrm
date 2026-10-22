@@ -3,8 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import PropertyReferralModal from '@/components/PropertyReferralModal';
-import { FileText, Upload, Download, X, ArrowLeft } from 'lucide-react';
-
+import { FileText, Upload,  Video, Plus, Download, X, ArrowLeft } from 'lucide-react';
 interface DocumentItem {
   id: string;
   tableName: string;
@@ -60,11 +59,20 @@ export default function AllPropertiesPage({ initialProperties = [] }: { initialP
     });
   }, [initialProperties, searchQuery, selectedCountry]);
 
-  // Pagination calculation
+
   const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentProperties = filteredProperties.slice(startIndex, startIndex + itemsPerPage);
 const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [uploadVideoProperty, setUploadVideoProperty] = useState<any>(null);
+  const [viewVideoProperty, setViewVideoProperty] = useState<any>(null);
+  const [propertyVideos, setPropertyVideos] = useState<any[]>([]);
+  const [fetchingVideos, setFetchingVideos] = useState(false);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
+ const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -185,6 +193,101 @@ async function handleUploadPdfSubmit(e: React.FormEvent) {
       setUploading(false);
     }
   }
+// YouTube Video States
+
+  // Fetch Videos when View Video modal opens
+
+  async function handleAddVideoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!uploadVideoProperty || !videoUrl) return;
+
+    if (!videoUrl.includes('youtube.com') && !videoUrl.includes('youtu.be')) {
+      alert('Please enter a valid YouTube video URL!');
+      return;
+    }
+
+    setUploadingVideo(true);
+    try {
+      const res = await fetch('/api/videos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tableName: 'property',
+          entityId: uploadVideoProperty.id,
+          title: videoTitle || 'Property Video',
+          fileUrl: videoUrl.trim(),
+        }),
+      });
+
+      const result = await res.json();
+
+      if (result.success) {
+        alert('YouTube video link added successfully!');
+        setUploadVideoProperty(null);
+        setVideoUrl('');
+        setVideoTitle('');
+      } else {
+        alert(result.error || 'Failed to save video details');
+      }
+    } catch (error: any) {
+      console.error('Add video error:', error);
+      alert('Failed to add video link');
+    } finally {
+      setUploadingVideo(false);
+    }
+  }
+
+  async function handleOpenViewVideo(property: any) {
+    setViewVideoProperty(property);
+    setFetchingVideos(true);
+    try {
+      const res = await fetch(`/api/videos?tableName=property&entityId=${property.id}`);
+      const result = await res.json();
+      if (result.success) {
+        setPropertyVideos(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching videos:', error);
+    } finally {
+      setFetchingVideos(false);
+    }
+  }
+
+
+  async function handleDeleteVideo(videoId: string) {
+    if (!confirm('Are you sure you want to delete this video?')) return;
+
+    setDeletingVideoId(videoId);
+    try {
+      const res = await fetch(`/api/videos?id=${videoId}`, {
+        method: 'DELETE',
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        alert('Video deleted successfully!');
+        // UI State update: List se remove karein bina poora page refresh kiye
+        setPropertyVideos((prev) => prev.filter((v) => v.id !== videoId));
+      } else {
+        alert(result.error || 'Failed to delete video');
+      }
+    } catch (error) {
+      console.error('Delete video error:', error);
+      alert('Failed to delete video');
+    } finally {
+      setDeletingVideoId(null);
+    }
+  }
+  function getYouTubeEmbedUrl(url: string) {
+  let videoId = '';
+  if (url.includes('youtu.be/')) {
+    videoId = url.split('youtu.be/')[1]?.split('?')[0];
+  } else if (url.includes('youtube.com/watch')) {
+    const urlParams = new URLSearchParams(new URL(url).search);
+    videoId = urlParams.get('v') || '';
+  }
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+}
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -332,27 +435,45 @@ async function handleUploadPdfSubmit(e: React.FormEvent) {
                 </div>
 
                 {/* Right: Actions (View PDF + Upload PDF + Referral + Details) */}
-                <div className="flex items-center gap-1.5 w-full md:w-auto justify-end flex-wrap">
-                  <button
-                    onClick={() => handleOpenViewPdf(property)}
-                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
-                  >
-                    <FileText className="w-3 h-3" /> View PDF
-                  </button>
-                  <button
-                    onClick={() => setUploadPdfProperty(property)}
-                    className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
-                  >
-                    <Upload className="w-3 h-3" /> Upload PDF
-                  </button>
-                  <PropertyReferralModal property={property} />
-                  <Link 
-                    href={`/property/list/${property.id}`}
-                    className="bg-gray-50 text-gray-700 hover:bg-gray-100 text-xs font-semibold px-3 py-2 rounded-xl transition border"
-                  >
-                    View Details
-                  </Link>
-                </div>
+               <div className="flex items-center gap-1.5 w-full md:w-auto justify-end flex-wrap">
+  {/* PDF Buttons */}
+  <button
+    onClick={() => handleOpenViewPdf(property)}
+    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+  >
+    <FileText className="w-3 h-3" /> View PDF
+  </button>
+  <button
+    onClick={() => setUploadPdfProperty(property)}
+    className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+  >
+    <Upload className="w-3 h-3" /> Upload PDF
+  </button>
+
+  {/* --- YouTube Video Buttons Added Here --- */}
+  <button
+    onClick={() => handleOpenViewVideo(property)}
+    className="px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+  >
+    <Video className="w-3 h-3" /> View Video
+  </button>
+  <button
+    onClick={() => setUploadVideoProperty(property)}
+    className="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg text-[11px] font-semibold inline-flex items-center gap-1 transition"
+  >
+    <Plus className="w-3 h-3" /> Add Video
+  </button>
+  {/* -------------------------------------- */}
+
+  <PropertyReferralModal property={property} />
+  
+  <Link 
+    href={`/property/list/${property.id}`}
+    className="bg-gray-50 text-gray-700 hover:bg-gray-100 text-xs font-semibold px-3 py-2 rounded-xl transition border"
+  >
+    View Details
+  </Link>
+</div>
               </div>
             );
           })}
@@ -678,6 +799,208 @@ async function handleUploadPdfSubmit(e: React.FormEvent) {
           </div>
         </div>
       )}
+      {uploadVideoProperty && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+      
+      {/* Modal Header */}
+      <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+        <div>
+          <h3 className="font-bold text-gray-800 text-lg">Add YouTube Video</h3>
+          <p className="text-xs text-gray-500">Property: {uploadVideoProperty.title}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setUploadVideoProperty(null);
+            setVideoUrl('');
+            setVideoTitle('');
+          }}
+          className="text-gray-400 hover:text-gray-600 text-xl font-bold px-3 py-1 rounded-lg transition"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Modal Form */}
+      <form onSubmit={handleAddVideoSubmit} className="p-6 space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">Video Title (Optional)</label>
+          <input
+            type="text"
+            value={videoTitle}
+            onChange={(e) => setVideoTitle(e.target.value)}
+            placeholder="e.g. Property Walkthrough / Drone Tour"
+            className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-600 mb-1">YouTube Video URL *</label>
+          <input
+            type="url"
+            required
+            value={videoUrl}
+            onChange={(e) => setVideoUrl(e.target.value)}
+            placeholder="https://www.youtube.com/watch?v=..."
+            className="w-full border rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">Paste full YouTube video or youtu.be link.</p>
+        </div>
+
+        {/* Footer Buttons */}
+        <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+          <button
+            type="button"
+            onClick={() => {
+              setUploadVideoProperty(null);
+              setVideoUrl('');
+              setVideoTitle('');
+            }}
+            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={uploadingVideo}
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition shadow-sm disabled:opacity-50"
+          >
+            {uploadingVideo ? 'Saving Link...' : 'Save Video'}
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+)}
+      {viewVideoProperty && (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+      
+      {/* Modal Header */}
+      <div className="p-5 border-b flex justify-between items-center bg-gray-50">
+        <div>
+          <h3 className="font-bold text-gray-800 text-lg">Property Videos</h3>
+          <p className="text-xs text-gray-500">Listing: {viewVideoProperty.title}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setViewVideoProperty(null);
+            setPreviewVideoUrl(null); // Video player close karne ke liye
+          }}
+          className="text-gray-400 hover:text-gray-600 text-xl font-bold px-3 py-1 rounded-lg transition"
+        >
+          ×
+        </button>
+      </div>
+
+      {/* Modal Body */}
+      <div className="p-6 overflow-y-auto space-y-6 flex-1">
+        
+        {/* Agar koi video play ho rahi hai toh uska embedded player yahan upar dikhega */}
+        {previewVideoUrl && (
+          <div className="bg-black rounded-xl overflow-hidden shadow-lg aspect-video relative">
+            <iframe
+              src={getYouTubeEmbedUrl(previewVideoUrl) || ''}
+              title="YouTube video player"
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+            <button
+              type="button"
+              onClick={() => setPreviewVideoUrl(null)}
+              className="absolute top-2 right-2 bg-red-600 text-white text-xs px-2.5 py-1 rounded-md shadow hover:bg-red-700 transition"
+            >
+              Close Player
+            </button>
+          </div>
+        )}
+
+        {/* Videos List */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Attached Videos List</h4>
+          
+          {fetchingVideos ? (
+            <div className="text-center py-10 text-gray-500">Loading videos...</div>
+          ) : propertyVideos.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed rounded-xl bg-gray-50 text-gray-400">
+              No videos attached to this property yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {propertyVideos.map((video) => (
+                <div 
+                  key={video.id} 
+                  className="p-4 border rounded-xl flex items-center justify-between bg-white hover:border-blue-300 shadow-sm transition gap-4"
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="bg-red-100 text-red-600 p-3 rounded-lg flex-shrink-0">
+                      {/* Play Icon / Video Symbol */}
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="truncate">
+                      <h5 className="font-semibold text-gray-800 text-sm truncate">{video.title}</h5>
+                      <a 
+                        href={video.fileUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-xs text-blue-500 hover:underline truncate block"
+                      >
+                        {video.fileUrl}
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Play & Delete Buttons */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewVideoUrl(video.fileUrl)}
+                      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition flex items-center gap-1 shadow-sm"
+                    >
+                      <span>Play</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteVideo(video.id)}
+                      disabled={deletingVideoId === video.id}
+                      className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-red-600 hover:text-white transition shadow-sm disabled:opacity-50"
+                    >
+                      {deletingVideoId === video.id ? 'Deleting...' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+      </div>
+
+      {/* Modal Footer */}
+      <div className="p-4 border-t bg-gray-50 flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            setViewVideoProperty(null);
+            setPreviewVideoUrl(null);
+          }}
+          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-300 transition"
+        >
+          Close
+        </button>
+      </div>
+
+    </div>
+  </div>
+)}
     </div>
   );
 }

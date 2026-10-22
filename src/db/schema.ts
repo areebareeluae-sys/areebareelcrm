@@ -130,6 +130,15 @@ export const documents = sqliteTable('documents', {
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   status: text('status').notNull().default('Active'),
 });
+export const videos = sqliteTable('videos', {
+  id: text('id').primaryKey(),
+  tableName: text('table_name').notNull(), // Yeh batayega ke file kis ki hai: 'customer', 'property', ya 'security_guards'
+  entityId: text('entity_id').notNull(),     // Uss specific record ki ID (Jaise customer.id ya property.id)
+  fileUrl: text('file_url').notNull(),       // Cloudinary ka secure PDF/File URL
+  title: text('title'),                      // Document ka title ya naam (Jaise: "Agreement", "Blueprint")
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  status: text('status').notNull().default('Active'),
+});
 export const dealeruserscrm = sqliteTable('dealeruserscrm', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),

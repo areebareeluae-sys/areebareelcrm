@@ -48,12 +48,18 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-const uploadResult: any = await new Promise((resolve, reject) => {
+    // Filename ko sanitize karne ka logic (spaces aur special chars hatane ke liye)
+    const originalNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+    const safePublicId = originalNameWithoutExt
+      .replace(/[^a-zA-Z0-9_\-]/g, "_") // Non-alphanumeric chars ko underscore('_') se replace kar dega
+      .replace(/_+/g, "_");             // Multiple underscores ko single underscore kar dega
+
+    const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { 
-          resource_type: 'raw', // <--- Yahan 'auto' ya 'image' ki jagah 'raw' kar dein
+          resource_type: 'raw',
           folder: 'crm_documents',
-          public_id: file.name.replace(/\.[^/.]+$/, "") // Optional: original name without extension
+          public_id: safePublicId // <--- Ab yahan clean public_id jayegi
         },
         (error, result) => {
           if (error) reject(error);
